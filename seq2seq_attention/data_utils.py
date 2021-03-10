@@ -9,36 +9,21 @@ def tokenizer(sentence):
 
 
 def idslist2sent(idslist, idx2word):
-    return ' '.join([idx2word[x] for x in idslist])
+    return ' '.join([idx2word[x].lstrip('__') for x in idslist if x not in [0,2]]).split('</s>')[0]
 
 
-def save_metrics_msg(data, responses, epoch, batch, val_ppl, dir_path):
-    if os.path.exists(dir_path):
-        exp_time = len(os.listdir(dir_path))
-    else:
-        exp_time = 0
-        os.makedirs(os.path.join(dir_path, 'exp_time_0'))
-
-    sample_path = os.path.join(dir_path,
-        'exp_time_{}'.format(exp_time),
-        'sample_epoch_{:0>4d}_batch_{:0>6d}_ppl_{:0>.4f}.results'.format(epoch, batch, val_ppl))
+def save_metrics_msg(data, responses, epoch, batch, val_ppl, idx2word, dir_path):
+    sample_path = os.path.join(dir_path,'sample_epoch_{:0>4d}_batch_{:0>6d}_ppl_{:0>.4f}.results'.format(epoch, batch, val_ppl))
     with open(sample_path, 'w', encoding='utf-8') as f:
-        for idx, [src, tgt] in enumerate(data):
-            f.write('sample:\n')
-            f.write(src+'\n')
-            f.write(tgt+'\n')
-            f.write(responses[idx]+'\n\n')
+        for idx, batch_src_tgt in enumerate(data):
+            for idxb, [src, tgt] in enumerate(batch_src_tgt):
+                f.write('sample:\n')
+                f.write(idslist2sent(src, idx2word)+'\n')
+                f.write(idslist2sent(tgt, idx2word)+'\n')
+                f.write(responses[idx][idxb]+'\n\n')
 
 
-def save_step_msg(train_loss, val_ppl, epoch, batch, cost_time, config):
-    if os.path.exists(config.logging_dir):
-        exp_time = len(os.listdir(config.logging_dir))
-    else:
-        exp_time = 0
-        os.makedirs(os.path.join(config.logging_dir, 'exp_time_0'))
-
-    log_path = os.path.join(config.logging_dir,
-        'log_data_{}'.format(exp_time))
+def save_step_msg(train_loss, val_ppl, epoch, batch, cost_time, log_path):
 
     with open(log_path, 'a', encoding='utf-8') as f:
         f.write('{}\t{}\t{:.4f}\t{:.4f}\t{:.4f}\n'.format(

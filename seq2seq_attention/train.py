@@ -71,7 +71,7 @@ def evaluate(model, data_iterator, criterion, device):
     return epoch_loss
 
 
-def inferring(model, data_iterator, criterion, device):
+def inferring(model, data_iterator, criterion, id2word, device):
     model.eval()
     epoch_loss = 0
     generate_responses = []
@@ -88,6 +88,8 @@ def inferring(model, data_iterator, criterion, device):
             # out_put = [batch_size, trg_len, output_dim]
             output = model(srcs, tgts, False)  # turn off teacher forcing
 
+            output_res_batch = torch.argmax(output, dim=2).tolist()
+            
             output_dim = output.shape[-1]
 
             # trg = [(trg_len - 1 ) * batch_size]
@@ -98,10 +100,10 @@ def inferring(model, data_iterator, criterion, device):
             loss = criterion(output, tgts)
             epoch_loss += loss.item()
 
-            output_res_batch = torch.argmax(output, dim=2).tolist()
-
+            response_batch = []
             for output_res in output_res_batch:
-                generate_responses.append(idslist2sent(output_res))
+                response_batch.append(idslist2sent(output_res, id2word))
+            generate_responses.append(response_batch)
 
     return epoch_loss, generate_responses
 
@@ -117,6 +119,8 @@ def main():
     Conf = Config()
     os.environ["CUDA_VISIBLE_DEVICES"] = Conf.device
 
+    exp_time = len(os.listdir(Conf.samples_dir)) if os.path.exists(Conf.samples_dir) else 0
+
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     print('set device {}'.format(device))
 
@@ -126,7 +130,7 @@ def main():
     valid_data_iterator = prepare_batch_iterator(valid_data, Conf.batch_size,\
         shuffle = False)
 
-    _, word2ids, _ = read_vocab(Conf.vocab_path)
+    _, word2ids, ids2word = read_vocab(Conf.vocab_path)
 
     print('initilize model, loss, optimizer')
     model = Seq2Seq(Conf, device).to(device)
@@ -157,19 +161,24 @@ def main():
         if valid_loss < best_valid_loss:
             best_valid_loss = valid_loss
 
-            infer_loss, infer_responses = inferring(model, valid_data_iterator, criterion, device)
+            infer_loss, infer_responses = inferring(model, valid_data_iterator, criterion, ids2word, device)
             average_infer_loss = infer_loss/sum(valid_length_data['tgt'])
             infer_ppl = math.exp(average_infer_loss)
 
-            save_metrics_msg(valid_data_iterator, infer_responses,
-                epoch, 0, valid_ppl, Conf.samples_dir)
+            samples_path = os.path.join(Conf.samples_dir, 'exp_time_{}'.format(exp_time))
+            if not os.path.exists(samples_path):os.makedirs(samples_path)
 
+            save_metrics_msg(valid_data_iterator, infer_responses,
+                epoch, 0, valid_ppl, ids2word, samples_path)
+
+            if not os.path.exists(Conf.checkpt_dir): os.makedirs(Conf.checkpt_dir)
             model_path = os.path.join(Conf.checkpt_dir, 'tut3-model.pt')
-            if not os.path.exists(model_path): os.makedirs(model_path)
             torch.save(model.state_dict(), model_path)
 
+        if not os.path.exists(Conf.logging_dir): os.makedirs(Conf.logging_dir)
+        step_msg_path = os.path.join(Conf.logging_dir, 'log_msg_{}'.format(exp_time))
         save_step_msg(average_train_loss, valid_ppl,
-            epoch, 0, end_time-start_time, Conf)
+            epoch, 0, end_time-start_time, step_msg_path)
         print(f'Epoch: {epoch + 1:02} | Time: {epoch_mins}m {epoch_secs}s')
         print(f'\t Train. Loss: {average_valid_loss:.3f} |  Train. PPL: {train_ppl:7.3f}')
         print(f'\t Val. Loss: {average_valid_loss:.3f} |  Val. PPL: {valid_ppl:7.3f}')
@@ -180,12 +189,15 @@ def main():
         shuffle = False)
 
     model.load_state_dict(torch.load(model_path))
-    test_loss, test_responses = inferring(model, test_data_iterator, criterion, device)
+    
+    test_loss, test_responses = inferring(model, test_data_iterator, criterion, ids2word, device)
     average_test_loss = test_loss/sum(test_length_data['tgt'])
     test_ppl = math.exp(average_test_loss)
 
+    test_samples_path = os.path.join(Conf.testing_dir, 'exp_time_{}'.format(exp_time))
+    if not os.path.exists(test_samples_path):os.makedirs(test_samples_path)
     save_metrics_msg(valid_data_iterator, infer_responses,
-                0, 0, valid_ppl, Conf.testing_dir)
+                0, 0, valid_ppl, ids2word, test_samples_path)
 
 
 

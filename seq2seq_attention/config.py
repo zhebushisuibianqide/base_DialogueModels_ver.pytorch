@@ -34,7 +34,7 @@ class Config():
         self.dec_rnn_type = 'GRU' # only 'LSTM' and 'GRU'
         self.dec_is_bidirectional = False
 
-        self.dropout = 0.1
+        self.dropout = 0.0
         self.lr = 1e-3
         self.batch_size = 64
         self.total_epoch_num = 50
