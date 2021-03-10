@@ -1,6 +1,7 @@
 #_*_ coding=utf-8 _*_
 import os
 import random
+import _pickle as pickle
 from config import Config
 
 def tokenizer(sentence):
@@ -35,12 +36,14 @@ def read_vocab(vocab_path):
 
 def read_word2vec(word2vec_path):
     word2vec = dict()
+    embedding_matrix = []
     with open(word2vec_path, 'r', encoding='utf-8') as f:
         for line in f:
             word, vec = line.strip('\n').split('\t')
             vec_f = [float(x) for x in vec.split(' ')]
             word2vec[word] = vec_f
-    return word2vec
+            embedding_matrix.append(vec_f)
+    return word2vec, embedding_matrix
 
 
 def sent2ids(sentence, word2ids):
@@ -52,10 +55,14 @@ def sent2ids(sentence, word2ids):
 
 def process_data(dialogues, word2ids, config):
     dialogue_ids = []
+    src_lens = []
+    tgt_lens = []
     for dialogue in dialogues:
         src, tgt = dialogue
         src_ids = [word2ids['<s>']] + sent2ids(src, word2ids) + [word2ids['</s>']]
         tgt_ids = [word2ids['<s>']] + sent2ids(tgt, word2ids) + [word2ids['</s>']]
+        src_lens.append(len(src_ids) if len(src_ids)<config.max_srclen else config.max_src_len)
+        tgt_lens.append(len(tgt_ids) if len(tgt_ids)<config.max_tgtlen else config.max_tgt_len)
         if len(src_ids) > config.max_srclen:
             src_ids = src_ids[0:config.max_srclen-1] + [word2ids['</s>']]
         elif len(src_ids) < config.max_srclen:
@@ -70,7 +77,8 @@ def process_data(dialogues, word2ids, config):
             pass
 
         dialogue_ids.append([src_ids, tgt_ids])
-    return dialogue_ids
+        dialogue_length_dict = {'src':src_lens, 'tgt':tgt_lens}
+    return dialogue_ids, dialogue_length_dict
 
 def save_processed_data(data, data_dir, data_type):
     data_src_path = os.path.join(data_dir, data_type+'.source.tok.ids')
@@ -82,6 +90,12 @@ def save_processed_data(data, data_dir, data_type):
             write_tgt_line = '\t'.join([str(x) for x in tgt])
             f1.write(write_src_line+'\n')
             f2.write(write_tgt_line+'\n')
+
+
+def save_length_dict(length_dict, data_dir, data_type):
+    dict_path = os.path.join(data_dir, data_type+'.length.dict')
+    with open(dict_path, 'wb') as f:
+        pickle.dump(length_dict, f)
 
 
 def load_processed_data(data_dir, data_type):
@@ -96,7 +110,12 @@ def load_processed_data(data_dir, data_type):
             tgt_str = tgt.strip('\n').split('\t')
             dialogues.append([[int(x) for x in src_str],
                 [int(x) for x in tgt_str]])
-    return dialogues
+
+    length_dict_path = os.path.join(data_dir, data_type+'.length.dict')
+    with open(length_dict_path, 'rb') as f:
+        dialogues_len_dict = pickle.load(f)
+
+    return dialogues, dialogues_len_dict
 
 
 def prepare_batch_iterator(data, batch_size, shuffle = False):
@@ -137,17 +156,25 @@ def main():
             break
 
     print('process data')
-    train_data_ids = process_data(train_dialogues, word2ids, conf)
-    valid_data_ids = process_data(valid_dialogues, word2ids, conf)
-    test_data_ids = process_data(test_dialogues, word2ids, conf)
+    train_data_ids, train_len_dict = process_data(train_dialogues, word2ids, conf)
+    valid_data_ids, valid_len_dict = process_data(valid_dialogues, word2ids, conf)
+    test_data_ids, test_len_dict = process_data(test_dialogues, word2ids, conf)
 
     print('processed train data')
     print(train_data_ids[0:2])
+    print('processed train data lens')
+    print(train_len_dict['src'][0:2], train_len_dict['tgt'][0:2])
 
     print('save processed data')
     save_processed_data(train_data_ids, conf.data_dir, 'train')
+    save_length_dict(train_len_dict, conf.data_dir, 'train')
+
     save_processed_data(valid_data_ids, conf.data_dir, 'valid')
+    save_length_dict(valid_len_dict, conf.data_dir, 'valid')
+    
     save_processed_data(test_data_ids, conf.data_dir, 'test')
+    save_length_dict(test_len_dict, conf.data_dir, 'test')
+
     print('done')
 
 if __name__ == '__main__':

@@ -119,7 +119,7 @@ class Attention(nn.Module):
 
         context = torch.tanh(self.fc(enc_output))
 
-        attention = torch.bmm(s, context.transpos(1,2)).squeeze(1)
+        attention = torch.bmm(s, context.transpose(1,2)).squeeze(1)
 
         # energy = [batch_size, src_len, dec_hid_dim]
         # energy = torch.tanh(self.attn(torch.cat((s, enc_output), dim=2)))
@@ -254,8 +254,13 @@ class Seq2Seq(nn.Module):
         super(Seq2Seq, self).__init__()
         if model_config.embed_path is None:
             self.embedding_matrix = nn.Embedding(model_config.vocab_size, model_config.emb_dim)
+            print('Initializing embedding matrix using random initialization.')
         else:
-            pass
+            from data_utils import read_word2vec
+            _, word2vec = read_word2vec(model_config.embed_path)
+            word2vec = torch.FloatTensor(word2vec)
+            self.embedding_matrix = nn.Embedding.from_pretrained(word2vec)
+            print('Initializing embedding matrix form pretrained file.')
         self.attention = Attention(model_config.enc_hid_dim, model_config.dec_hid_dim)
         self.encoder = Encoder(
             self.embedding_matrix, model_config.enc_rnn_type, model_config.enc_is_bidirectional, \

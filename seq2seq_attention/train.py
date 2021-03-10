@@ -39,7 +39,7 @@ def train(model, data_iterator, optimizer, criterion, device):
         optimizer.step()
         epoch_loss += loss.item()
 
-    return epoch_loss / len(data_iterator)
+    return epoch_loss
 
 def evaluate(model, data_iterator, criterion, device):
     model.eval()
@@ -67,7 +67,7 @@ def evaluate(model, data_iterator, criterion, device):
             loss = criterion(output, tgts)
             epoch_loss += loss.item()
 
-    return epoch_loss / len(data_iterator)
+    return epoch_loss
 
 
 def epoch_time(start_time, end_time):
@@ -86,8 +86,8 @@ def main():
     print('set device {}'.format(device))
 
     print('load data')
-    train_data = load_processed_data(Conf.data_dir, 'train')
-    valid_data = load_processed_data(Conf.data_dir, 'valid')
+    train_data, train_length_data = load_processed_data(Conf.data_dir, 'train')
+    valid_data, valid_length_data = load_processed_data(Conf.data_dir, 'valid')
     valid_data_iterator = prepare_batch_iterator(valid_data, Conf.batch_size,\
         shuffle = False)
 
@@ -96,7 +96,7 @@ def main():
     print('initilize model, loss, optimizer')
     model = Seq2Seq(Conf, device).to(device)
     PAD_IDX = word2ids['<pad>']
-    criterion = nn.CrossEntropyLoss(ignore_index=PAD_IDX).to(device)
+    criterion = nn.CrossEntropyLoss(ignore_index=PAD_IDX, reduction='sum').to(device)
     optimizer = optim.Adam(model.parameters(), lr=1e-3)
 
     best_valid_loss = float('inf')
@@ -108,7 +108,12 @@ def main():
         train_data_iterator = prepare_batch_iterator(train_data, Conf.batch_size,\
             shuffle = True)
         train_loss = train(model, train_data_iterator, optimizer, criterion, device)
+        average_train_loss = train_loss/sum(train_length_data['tgt'])
+        train_ppl = math.exp(average_train_loss)
+
         valid_loss = evaluate(model, valid_data_iterator, criterion, device)
+        average_valid_loss = valid_loss/sum(valid_length_data['tgt'])
+        valid_ppl = math.exp(average_valid_loss)
 
         end_time = time.time()
 
@@ -116,11 +121,11 @@ def main():
 
         if valid_loss < best_valid_loss:
             best_valid_loss = valid_loss
-            torch.save(model.state_dict(), 'tut3-model.pt')
+            #torch.save(model.state_dict(), 'tut3-model.pt')
 
         print(f'Epoch: {epoch + 1:02} | Time: {epoch_mins}m {epoch_secs}s')
-        print(f'\tTrain Loss: {train_loss:.3f} | Train PPL: {math.exp(train_loss):7.3f}')
-        print(f'\t Val. Loss: {valid_loss:.3f} |  Val. PPL: {math.exp(valid_loss):7.3f}')
+        print(f'\t Train. Loss: {average_valid_loss:.3f} |  Train. PPL: {train_ppl:7.3f}')
+        print(f'\t Val. Loss: {average_valid_loss:.3f} |  Val. PPL: {valid_ppl:7.3f}')
 
 
 if __name__ == '__main__':
