@@ -15,6 +15,7 @@ class Config():
 
         self.logging_dir = 'log'
         self.samples_dir = 'samples'
+        self.testing_dir = 'test_samples'
         self.checkpt_dir = 'checkpoints'
 
         self.max_srclen = 25

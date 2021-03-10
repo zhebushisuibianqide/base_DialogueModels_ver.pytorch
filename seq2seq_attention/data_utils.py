@@ -8,6 +8,47 @@ def tokenizer(sentence):
     return [tok for tok in sentence.split()]
 
 
+def idslist2sent(idslist, idx2word):
+    return ' '.join([idx2word[x] for x in idslist])
+
+
+def save_metrics_msg(data, responses, epoch, batch, val_ppl, dir_path):
+    if os.path.exists(dir_path):
+        exp_time = len(os.listdir(dir_path))
+    else:
+        exp_time = 0
+        os.makedirs(os.path.join(dir_path, 'exp_time_0'))
+
+    sample_path = os.path.join(dir_path,
+        'exp_time_{}'.format(exp_time),
+        'sample_epoch_{:0>4d}_batch_{:0>6d}_ppl_{:0>.4f}.results'.format(epoch, batch, val_ppl))
+    with open(sample_path, 'w', encoding='utf-8') as f:
+        for idx, [src, tgt] in enumerate(data):
+            f.write('sample:\n')
+            f.write(src+'\n')
+            f.write(tgt+'\n')
+            f.write(responses[idx]+'\n\n')
+
+
+def save_step_msg(train_loss, val_ppl, epoch, batch, cost_time, config):
+    if os.path.exists(config.logging_dir):
+        exp_time = len(os.listdir(config.logging_dir))
+    else:
+        exp_time = 0
+        os.makedirs(os.path.join(config.logging_dir, 'exp_time_0'))
+
+    log_path = os.path.join(config.logging_dir,
+        'log_data_{}'.format(exp_time))
+
+    with open(log_path, 'a', encoding='utf-8') as f:
+        f.write('{}\t{}\t{:.4f}\t{:.4f}\t{:.4f}\n'.format(
+            epoch,
+            batch,
+            train_loss,
+            val_ppl,
+            cost_time))
+
+
 def load_data(data_dir, data_type):
     dialogues = []
     data_src_path = os.path.join(data_dir, data_type+'.source')
@@ -171,7 +212,7 @@ def main():
 
     save_processed_data(valid_data_ids, conf.data_dir, 'valid')
     save_length_dict(valid_len_dict, conf.data_dir, 'valid')
-    
+
     save_processed_data(test_data_ids, conf.data_dir, 'test')
     save_length_dict(test_len_dict, conf.data_dir, 'test')
 

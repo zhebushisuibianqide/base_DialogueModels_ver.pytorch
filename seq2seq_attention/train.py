@@ -3,7 +3,8 @@ import time
 from config import Config
 from model import Seq2Seq
 from data_utils import read_vocab, read_word2vec, load_processed_data
-from data_utils import prepare_batch_iterator
+from data_utils import prepare_batch_iterator, idslist2sent
+from data_utils import save_metrics_msg, save_step_msg
 import torch.optim as optim
 import torch.nn as nn
 import torch
@@ -54,7 +55,7 @@ def evaluate(model, data_iterator, criterion, device):
 
             srcs = torch.LongTensor(srcs).to(device)
             tgts = torch.LongTensor(tgts).to(device)
-            # out_put = [trg_len, batch_size, output_dim]
+            # out_put = [batch_size, trg_len, output_dim]
             output = model(srcs, tgts, True)  # turn on teacher forcing
 
             output_dim = output.shape[-1]
@@ -69,6 +70,40 @@ def evaluate(model, data_iterator, criterion, device):
 
     return epoch_loss
 
+
+def inferring(model, data_iterator, criterion, device):
+    model.eval()
+    epoch_loss = 0
+    generate_responses = []
+    with torch.no_grad():
+        for i, batch in enumerate(tqdm(data_iterator)):
+            srcs = []
+            tgts = []  # trg = [batch_size，trg_len]
+            for src, tgt in batch:
+                srcs.append(src)
+                tgts.append(tgt)
+
+            srcs = torch.LongTensor(srcs).to(device)
+            tgts = torch.LongTensor(tgts).to(device)
+            # out_put = [batch_size, trg_len, output_dim]
+            output = model(srcs, tgts, False)  # turn off teacher forcing
+
+            output_dim = output.shape[-1]
+
+            # trg = [(trg_len - 1 ) * batch_size]
+            # output = [(trg_len - 1) * batch_size, output_dim]
+            output = output.view(-1, output_dim)
+            tgts = tgts.view(-1)
+
+            loss = criterion(output, tgts)
+            epoch_loss += loss.item()
+
+            output_res_batch = torch.argmax(output, dim=2).tolist()
+
+            for output_res in output_res_batch:
+                generate_responses.append(idslist2sent(output_res))
+
+    return epoch_loss, generate_responses
 
 def epoch_time(start_time, end_time):
     elapsed_time = end_time - start_time
@@ -121,11 +156,37 @@ def main():
 
         if valid_loss < best_valid_loss:
             best_valid_loss = valid_loss
-            #torch.save(model.state_dict(), 'tut3-model.pt')
 
+            infer_loss, infer_responses = inferring(model, valid_data_iterator, criterion, device)
+            average_infer_loss = infer_loss/sum(valid_length_data['tgt'])
+            infer_ppl = math.exp(average_infer_loss)
+
+            save_metrics_msg(valid_data_iterator, infer_responses,
+                epoch, 0, valid_ppl, Conf.samples_dir)
+
+            model_path = os.path.join(Conf.checkpt_dir, 'tut3-model.pt')
+            if not os.path.exists(model_path): os.makedirs(model_path)
+            torch.save(model.state_dict(), model_path)
+
+        save_step_msg(average_train_loss, valid_ppl,
+            epoch, 0, end_time-start_time, Conf)
         print(f'Epoch: {epoch + 1:02} | Time: {epoch_mins}m {epoch_secs}s')
         print(f'\t Train. Loss: {average_valid_loss:.3f} |  Train. PPL: {train_ppl:7.3f}')
         print(f'\t Val. Loss: {average_valid_loss:.3f} |  Val. PPL: {valid_ppl:7.3f}')
+        print(f'\t Val. infer Loss: {average_infer_loss:.3f} |  Val. infer PPL: {infer_ppl:7.3f}')
+
+    test_data, test_length_data = load_processed_data(Conf.data_dir, 'test')
+    test_data_iterator = prepare_batch_iterator(test_data, Conf.batch_size,\
+        shuffle = False)
+
+    model.load_state_dict(torch.load(model_path))
+    test_loss, test_responses = inferring(model, test_data_iterator, criterion, device)
+    average_test_loss = test_loss/sum(test_length_data['tgt'])
+    test_ppl = math.exp(average_test_loss)
+
+    save_metrics_msg(valid_data_iterator, infer_responses,
+                0, 0, valid_ppl, Conf.testing_dir)
+
 
 
 if __name__ == '__main__':
