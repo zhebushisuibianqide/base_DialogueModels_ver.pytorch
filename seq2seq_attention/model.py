@@ -100,8 +100,9 @@ class Encoder(nn.Module):
 class Attention(nn.Module):
     def __init__(self, enc_hid_dim, dec_hid_dim):
         super(Attention, self).__init__()
-        self.attn = nn.Linear((enc_hid_dim) * 2 + dec_hid_dim, dec_hid_dim, bias=False)
-        self.V = nn.Linear(dec_hid_dim, 1, bias=False)
+        #self.attn = nn.Linear((enc_hid_dim) * 2 + dec_hid_dim, dec_hid_dim, bias=False)
+        #self.V = nn.Linear(dec_hid_dim, 1, bias=False)
+        self.fc = nn.Linear(enc_hid_dim * 2, dec_hid_dim, bias=False)
 
     def forward(self, s, enc_output):
         # s = [batch_size, dec_hid_dim]
@@ -111,15 +112,20 @@ class Attention(nn.Module):
         src_len = enc_output.shape[1]
 
         # repeat decoder hidden state src_len times
-        # s = [batch_size, seq_len, dec_hid_dim]
+        # s = [batch_size, 1, dec_hid_dim]
         # enc_out_put = [batch_size, seq_len, enc_hid_dim * 2]
-        s = s.unsqueeze(1).repeat(1, src_len, 1)
+        #s = s.unsqueeze(1).repeat(1, src_len, 1)
+        s = s.unsqueeze(1)
+
+        context = torch.tanh(self.fc(enc_output))
+
+        attention = torch.bmm(s, context.transpos(1,2)).squeeze(1)
 
         # energy = [batch_size, src_len, dec_hid_dim]
-        energy = torch.tanh(self.attn(torch.cat((s, enc_output), dim=2)))
+        # energy = torch.tanh(self.attn(torch.cat((s, enc_output), dim=2)))
 
         # attention = [batch_size, src_len]
-        attention = self.V(energy).squeeze(2)
+        # attention = self.V(energy).squeeze(2)
 
         return F.softmax(attention, dim=1)
 

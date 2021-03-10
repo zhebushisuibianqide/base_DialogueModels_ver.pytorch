@@ -55,7 +55,7 @@ def evaluate(model, data_iterator, criterion, device):
             srcs = torch.LongTensor(srcs).to(device)
             tgts = torch.LongTensor(tgts).to(device)
             # out_put = [trg_len, batch_size, output_dim]
-            output = model(srcs, tgts, 0)  # turn off teacher forcing
+            output = model(srcs, tgts, True)  # turn on teacher forcing
 
             output_dim = output.shape[-1]
 
