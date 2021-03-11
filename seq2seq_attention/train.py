@@ -196,8 +196,8 @@ def main():
 
     test_samples_path = os.path.join(Conf.testing_dir, 'exp_time_{}'.format(exp_time))
     if not os.path.exists(test_samples_path):os.makedirs(test_samples_path)
-    save_metrics_msg(valid_data_iterator, infer_responses,
-                0, 0, valid_ppl, ids2word, test_samples_path)
+    save_metrics_msg(test_data_iterator, test_responses,
+                0, 0, test_ppl, ids2word, test_samples_path)
 
 
 
