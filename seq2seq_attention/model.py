@@ -205,7 +205,9 @@ class Decoder(nn.Module):
 
         # enc_output = [batch_size, src_len, enc_hid_dim * 2]
         # c = [batch_size, 1, enc_hid_dim * 2]
-        c = torch.bmm(a, enc_output)
+        #c = torch.bmm(a, enc_output)
+        #normal seq2seq
+        c = torch.mean(enc_output, dim=1, keepdim=True)
 
         # rnn_input = [batch_size, 1, (enc_hid_dim * 2) + emb_dim]
         rnn_input = torch.cat((embedded, c), dim=2)
