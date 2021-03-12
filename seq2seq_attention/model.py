@@ -119,7 +119,7 @@ class Attention(nn.Module):
 
         context = torch.tanh(self.fc(enc_output))
 
-        attention = torch.bmm(s, context.transpose(1,2)).squeeze(1)
+        attention = torch.tanh(torch.bmm(s, context.transpose(1,2)).squeeze(1))
 
         # energy = [batch_size, src_len, dec_hid_dim]
         # energy = torch.tanh(self.attn(torch.cat((s, enc_output), dim=2)))
@@ -142,7 +142,7 @@ class Decoder(nn.Module):
         self.num_layer = dec_layer
         if rnn_type == 'LSTM':
             self.rnn = nn.LSTM(
-                input_size = enc_hid_dim * 2 + emb_dim, # The number of expected features in the input x
+                input_size = enc_hid_dim * 0 + emb_dim, # The number of expected features in the input x
                 hidden_size = dec_hid_dim, # The number of features in the hidden state h
                 num_layers = dec_layer, # Number of recurrent layers. E.g., setting num_layers=2 would mean stacking two LSTMs together to form a stacked LSTM, with the second LSTM taking in outputs of the first LSTM and computing the final results. Default: 1
                 bias = True, # If False, then the layer does not use bias weights b_ih and b_hh. Default: True
@@ -154,7 +154,7 @@ class Decoder(nn.Module):
             #TypeError: __init__() got an unexpected keyword argument 'proj_size'
         elif rnn_type == 'GRU':
             self.rnn = nn.GRU(
-                input_size = enc_hid_dim * 2 + emb_dim, # The number of expected features in the input x
+                input_size = enc_hid_dim * 0 + emb_dim, # The number of expected features in the input x
                 hidden_size = dec_hid_dim, # The number of features in the hidden state h
                 num_layers = dec_layer, # Number of recurrent layers. E.g., setting num_layers=2 would mean stacking two GRUs together to form a stacked GRU, with the second GRU taking in outputs of the first GRU and computing the final results. Default: 1
                 bias = True, # If False, then the layer does not use bias weights b_ih and b_hh. Default: True
@@ -164,7 +164,7 @@ class Decoder(nn.Module):
                 )
         else:
             raise ValueError('No rnn_type is {}, check the config.'.format(rnn_type))
-        self.fc_out = nn.Linear((enc_hid_dim * 2) + dec_hid_dim + emb_dim, vocab_size)
+        self.fc_out = nn.Linear((enc_hid_dim * 0) + dec_hid_dim + emb_dim, vocab_size)
         self.dropout = nn.Dropout(dropout)
 
     def forward(self, dec_input, s, enc_output):
@@ -207,10 +207,11 @@ class Decoder(nn.Module):
         # c = [batch_size, 1, enc_hid_dim * 2]
         #c = torch.bmm(a, enc_output)
         #normal seq2seq
-        c = torch.mean(enc_output, dim=1, keepdim=True)
+        #c = torch.mean(enc_output, dim=1, keepdim=True)
 
         # rnn_input = [batch_size, 1, (enc_hid_dim * 2) + emb_dim]
-        rnn_input = torch.cat((embedded, c), dim=2)
+        #rnn_input = torch.cat((embedded, c), dim=2)
+        rnn_input = embedded
 
         # dec_output = [batch_size, src_len(=1), dec_hid_dim]
         # dec_hidden = [n_layers * num_directions, batch_size, dec_hid_dim]
@@ -227,10 +228,11 @@ class Decoder(nn.Module):
         # c = [batch_size, enc_hid_dim * 2]
         embedded = embedded.squeeze(1)
         dec_output = dec_output.squeeze(1)
-        c = c.squeeze(1)
+        #c = c.squeeze(1)
 
         # pred = [batch_size, output_dim]
-        pred = self.fc_out(torch.cat((dec_output, c, embedded), dim=1))
+        #pred = self.fc_out(torch.cat((dec_output, c, embedded), dim=1))
+        pred = self.fc_out(torch.cat((dec_output, embedded), dim=1))
 
         if self.rnn_type == 'LSTM':
             if self.is_bidirectional:

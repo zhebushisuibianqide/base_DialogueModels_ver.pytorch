@@ -1,0 +1,96 @@
+seq2seq_attention
+valid data msg:
+Total_num	Valid_num	avg_cxt_len	avg_gtr_len	avg_ger_len
+1984	1984	11.589717741935484	11.459173387096774	9.348790322580646
+valid metrics results:
+epx_time	Token	Dist-1	Dist-2	Dist-3	Dist-S	distinct-1	distinct-2	distinct-3	response-length	Bleu-1	Bleu-2	Bleu-3	Bleu-4	Greedy	Average	Extrema	embedding_based_avg	Coherence
+exp_0	18548	792	2287	3545	1484	0.0427	0.1381	0.2431	                    9.35	0.4165	0.3805	0.4008	0.3876	                    0.6867	0.8607	0.4766	0.6747	0.7709
+average and std.
+exp_avg	18548.0	792.0	2287.0	3545.0	1484.0	0.0427	0.1381	0.2431	                    9.35	0.4165	0.3805	0.4008	0.3876	                    0.6867	0.8607	0.4766	0.6747	0.7709
+exp_avg	0.000	0.000	0.000	0.000	0.000	                0.000	0.000	0.000	0.000	0.000	0.000	0.000	                0.000	0.000	0.000	0.000	0.000	0.000
+
+test data msg:
+Total_num	Valid_num	avg_cxt_len	avg_gtr_len	avg_ger_len
+960	960	11.3125	11.767708333333333	9.1625
+test metrics results:
+epx_time	Token	Dist-1	Dist-2	Dist-3	Dist-S	distinct-1	distinct-2	distinct-3	response-length	Bleu-1	Bleu-2	Bleu-3	Bleu-4	Greedy	Average	Extrema	embedding_based_avg	Coherence
+exp_0	18548	792	2287	3545	1484	0.0427	0.1381	0.2431	                    9.35	0.4165	0.3805	0.4008	0.3876	                    0.6867	0.8607	0.4766	0.6747	0.7709
+average and std.
+exp_avg	8796.0	614.0	1610.0	2304.0	778.0	0.0698	0.2055	0.3351	                    9.16	0.4143	0.3823	0.4062	0.3952	                    0.6862	0.8599	0.4728	0.6729	0.7634
+exp_avg	0.000	0.000	0.000	0.000	0.000	                0.000	0.000	0.000	0.000	0.000	0.000	0.000	                0.000	0.000	0.000	0.000	0.000	0.000
+
+seq2seq_attention
+valid data msg:
+Total_num	Valid_num	avg_cxt_len	avg_gtr_len	avg_ger_len
+1984	1984	11.589717741935484	11.459173387096774	9.348790322580646
+valid metrics results:
+epx_time	Token	Dist-1	Dist-2	Dist-3	Dist-S	distinct-1	distinct-2	distinct-3	response-length	Bleu-1	Bleu-2	Bleu-3	Bleu-4	Greedy	Average	Extrema	embedding_based_avg	Coherence
+exp_0	18548	792	2287	3545	1484	0.0427	0.1381	0.2431	                    9.35	0.4165	0.3805	0.4008	0.3876	                    0.6867	0.8607	0.4766	0.6747	0.7709
+exp_1	18076	754	2302	3706	1463	0.0417	0.1431	0.2627	                    9.11	0.4145	0.3835	0.4068	0.3951	                    0.6898	0.8568	0.4820	0.6762	0.7623
+average and std.
+exp_avg	18312.0	773.0	2294.5	3625.5	1473.5	0.0422	0.1406	0.2529	                    9.23	0.4155	0.3820	0.4038	0.3914	                    0.6883	0.8587	0.4793	0.6754	0.7666
+exp_avg	236.000	19.000	7.500	80.500	10.500	                0.000	0.002	0.010	0.119	0.001	0.001	0.003	                0.004	0.002	0.002	0.003	0.001	0.004
+
+test data msg:
+Total_num	Valid_num	avg_cxt_len	avg_gtr_len	avg_ger_len
+960	960	11.3125	11.767708333333333	9.1625
+test metrics results:
+epx_time	Token	Dist-1	Dist-2	Dist-3	Dist-S	distinct-1	distinct-2	distinct-3	response-length	Bleu-1	Bleu-2	Bleu-3	Bleu-4	Greedy	Average	Extrema	embedding_based_avg	Coherence
+exp_0	18548	792	2287	3545	1484	0.0427	0.1381	0.2431	                    9.35	0.4165	0.3805	0.4008	0.3876	                    0.6867	0.8607	0.4766	0.6747	0.7709
+exp_1	18076	754	2302	3706	1463	0.0417	0.1431	0.2627	                    9.11	0.4145	0.3835	0.4068	0.3951	                    0.6898	0.8568	0.4820	0.6762	0.7623
+average and std.
+exp_avg	8728.5	597.5	1624.0	2366.5	778.5	0.0684	0.2091	0.3477	                    9.09	0.4156	0.3842	0.4082	0.3970	                    0.6880	0.8587	0.4739	0.6735	0.7625
+exp_avg	67.500	16.500	14.000	62.500	0.500	                0.001	0.004	0.013	0.070	0.001	0.002	0.002	                0.002	0.002	0.001	0.001	0.001	0.001
+
+seq2seq_attention
+valid data msg:
+Total_num	Valid_num	avg_cxt_len	avg_gtr_len	avg_ger_len
+1984	1984	11.589717741935484	11.459173387096774	9.348790322580646
+valid metrics results:
+epx_time	Token	Dist-1	Dist-2	Dist-3	Dist-S	distinct-1	distinct-2	distinct-3	response-length	Bleu-1	Bleu-2	Bleu-3	Bleu-4	Greedy	Average	Extrema	embedding_based_avg	Coherence
+exp_0	18548	792	2287	3545	1484	0.0427	0.1381	0.2431	                    9.35	0.4165	0.3805	0.4008	0.3876	                    0.6867	0.8607	0.4766	0.6747	0.7709
+exp_1	18076	754	2302	3706	1463	0.0417	0.1431	0.2627	                    9.11	0.4145	0.3835	0.4068	0.3951	                    0.6898	0.8568	0.4820	0.6762	0.7623
+exp_2	25792	9	10	10	1	0.0003	0.0004	0.0005	                    13.00	0.4038	0.3378	0.3282	0.3002	                    0.6127	0.8095	0.4113	0.6112	0.6696
+average and std.
+exp_avg	20805.333333333332	518.3333333333334	1533.0	2420.3333333333335	982.6666666666666	0.0283	0.0938	0.1688	                    10.49	0.4116	0.3673	0.3786	0.3610	                    0.6631	0.8423	0.4567	0.6540	0.7343
+exp_avg	3531.367	360.487	1076.941	1705.630	694.196	                0.020	0.066	0.119	1.780	0.006	0.021	0.036	                0.043	0.036	0.023	0.032	0.030	0.046
+
+test data msg:
+Total_num	Valid_num	avg_cxt_len	avg_gtr_len	avg_ger_len
+960	960	11.3125	11.767708333333333	9.1625
+test metrics results:
+epx_time	Token	Dist-1	Dist-2	Dist-3	Dist-S	distinct-1	distinct-2	distinct-3	response-length	Bleu-1	Bleu-2	Bleu-3	Bleu-4	Greedy	Average	Extrema	embedding_based_avg	Coherence
+exp_0	18548	792	2287	3545	1484	0.0427	0.1381	0.2431	                    9.35	0.4165	0.3805	0.4008	0.3876	                    0.6867	0.8607	0.4766	0.6747	0.7709
+exp_1	18076	754	2302	3706	1463	0.0417	0.1431	0.2627	                    9.11	0.4145	0.3835	0.4068	0.3951	                    0.6898	0.8568	0.4820	0.6762	0.7623
+exp_2	25792	9	10	10	1	0.0003	0.0004	0.0005	                    13.00	0.4038	0.3378	0.3282	0.3002	                    0.6127	0.8095	0.4113	0.6112	0.6696
+average and std.
+exp_avg	9979.0	401.3333333333333	1086.0	1581.0	519.3333333333334	0.0459	0.1397	0.2321	                    10.39	0.4104	0.3676	0.3804	0.3637	                    0.6630	0.8429	0.4537	0.6532	0.7304
+exp_avg	1769.333	277.748	760.933	1112.036	366.517	                0.032	0.098	0.164	1.843	0.007	0.023	0.039	                0.047	0.035	0.022	0.029	0.029	0.045
+
+seq2seq_attention
+valid data msg:
+Total_num	Valid_num	avg_cxt_len	avg_gtr_len	avg_ger_len
+1984	1984	11.589717741935484	11.459173387096774	9.348790322580646
+valid metrics results:
+epx_time	Token	Dist-1	Dist-2	Dist-3	Dist-S	distinct-1	distinct-2	distinct-3	response-length	Bleu-1	Bleu-2	Bleu-3	Bleu-4	Greedy	Average	Extrema	embedding_based_avg	Coherence
+exp_0	18548	792	2287	3545	1484	0.0427	0.1381	0.2431	                    9.35	0.4165	0.3805	0.4008	0.3876	                    0.6867	0.8607	0.4766	0.6747	0.7709
+exp_1	18076	754	2302	3706	1463	0.0417	0.1431	0.2627	                    9.11	0.4145	0.3835	0.4068	0.3951	                    0.6898	0.8568	0.4820	0.6762	0.7623
+exp_2	25792	9	10	10	1	0.0003	0.0004	0.0005	                    13.00	0.4038	0.3378	0.3282	0.3002	                    0.6127	0.8095	0.4113	0.6112	0.6696
+exp_3	17856	6	6	6	1	0.0003	0.0004	0.0004	                    9.00	0.3507	0.3315	0.3518	0.3397	                    0.6082	0.7458	0.4158	0.5899	0.5953
+average and std.
+exp_avg	20068.0	390.25	1151.25	1816.75	737.25	0.0213	0.0705	0.1267	                    10.11	0.3964	0.3583	0.3719	0.3557	                    0.6493	0.8182	0.4464	0.6380	0.6995
+exp_avg	3314.196	382.987	1143.263	1809.646	736.287	                0.021	0.070	0.126	1.670	0.027	0.024	0.033	                0.038	0.039	0.046	0.033	0.038	0.072
+
+test data msg:
+Total_num	Valid_num	avg_cxt_len	avg_gtr_len	avg_ger_len
+960	960	11.3125	11.767708333333333	9.1625
+test metrics results:
+epx_time	Token	Dist-1	Dist-2	Dist-3	Dist-S	distinct-1	distinct-2	distinct-3	response-length	Bleu-1	Bleu-2	Bleu-3	Bleu-4	Greedy	Average	Extrema	embedding_based_avg	Coherence
+exp_0	18548	792	2287	3545	1484	0.0427	0.1381	0.2431	                    9.35	0.4165	0.3805	0.4008	0.3876	                    0.6867	0.8607	0.4766	0.6747	0.7709
+exp_1	18076	754	2302	3706	1463	0.0417	0.1431	0.2627	                    9.11	0.4145	0.3835	0.4068	0.3951	                    0.6898	0.8568	0.4820	0.6762	0.7623
+exp_2	25792	9	10	10	1	0.0003	0.0004	0.0005	                    13.00	0.4038	0.3378	0.3282	0.3002	                    0.6127	0.8095	0.4113	0.6112	0.6696
+exp_3	17856	6	6	6	1	0.0003	0.0004	0.0004	                    9.00	0.3507	0.3315	0.3518	0.3397	                    0.6082	0.7458	0.4158	0.5899	0.5953
+average and std.
+exp_avg	9644.25	302.5	816.0	1187.25	389.75	0.0346	0.1050	0.1743	                    10.05	0.3929	0.3563	0.3709	0.3554	                    0.6495	0.8191	0.4448	0.6378	0.6957
+exp_avg	1638.315	295.233	808.062	1180.079	388.750	                0.034	0.104	0.174	1.707	0.031	0.028	0.038	                0.043	0.038	0.046	0.029	0.036	0.072
+

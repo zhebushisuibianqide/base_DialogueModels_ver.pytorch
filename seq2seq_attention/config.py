@@ -37,4 +37,4 @@ class Config():
         self.dropout = 0.0
         self.lr = 1e-3
         self.batch_size = 64
-        self.total_epoch_num = 10
+        self.total_epoch_num = 20
