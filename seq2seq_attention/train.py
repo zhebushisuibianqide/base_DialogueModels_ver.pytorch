@@ -42,6 +42,39 @@ def train(model, data_iterator, optimizer, criterion, device):
 
     return epoch_loss
 
+
+def train_on_batch(model, data_iterator, epoch, optimizer, criterion, device):
+    model.train()
+    epoch_loss = 0
+    for i, batch in enumerate(tqdm(data_iterator)):
+        srcs = []
+        tgts = []  # trg = [batch_size，trg_len]
+        for src, tgt in batch:
+            srcs.append(src)
+            tgts.append(tgt)
+
+        srcs = torch.LongTensor(srcs).to(device)
+        tgts = torch.LongTensor(tgts).to(device)
+
+        # pred = [batch_size, trg_len, pred_dim]
+        pred = model(srcs, tgts)
+
+        pred_dim = pred.shape[-1]
+
+        # tgt = [(tgt_len - 1) * batch_size]
+        # pred = [(tgt_len - 1) * batch_size, pred_dim]
+        tgts = tgts.view(-1)
+        pred = pred.view(-1, pred_dim)
+
+        loss = criterion(pred, tgts)
+        optimizer.zero_grad()
+        loss.backward()
+        optimizer.step()
+        epoch_loss += loss.item()
+
+    return epoch_loss
+
+
 def evaluate(model, data_iterator, criterion, device):
     model.eval()
     epoch_loss = 0
@@ -89,7 +122,7 @@ def inferring(model, data_iterator, criterion, id2word, device):
             output = model(srcs, tgts, False)  # turn off teacher forcing
 
             output_res_batch = torch.argmax(output, dim=2).tolist()
-            
+
             output_dim = output.shape[-1]
 
             # trg = [(trg_len - 1 ) * batch_size]
@@ -127,10 +160,11 @@ def main():
     print('load data')
     train_data, train_length_data = load_processed_data(Conf.data_dir, 'train')
     valid_data, valid_length_data = load_processed_data(Conf.data_dir, 'valid')
-    valid_data_iterator = prepare_batch_iterator(valid_data, Conf.batch_size,\
-        shuffle = False)
+    valid_data_iterator, valid_tgt_lens = prepare_batch_iterator(valid_data, \
+        valid_length_data['tgt'], Conf.batch_size, shuffle = False)
 
     _, word2ids, ids2word = read_vocab(Conf.vocab_path)
+    Conf.vocab_size = len(word2ids.keys())
 
     print('initilize model, loss, optimizer')
     model = Seq2Seq(Conf, device).to(device)
@@ -141,57 +175,129 @@ def main():
     best_valid_loss = float('inf')
 
     print('start Training...')
-    for epoch in range(Conf.total_epoch_num):
+    if Conf.eval_per_batch is not None:
+        '''start train on batch'''
+        train_data_iterator train_tgt_lens = prepare_batch_iterator(train_data, \
+            train_length_data['tgt'], Conf.batch_size, shuffle = True)
+        batch_num = len(train_data_iterator)
+        epoch_loss = 0
         start_time = time.time()
+        lens_per_batch = 0
+        for batch_t in tqdm(range(Conf.total_epoch_num*batch_num)):
+            model.train()
+            srcs = []
+            tgts = []  # trg = [batch_size，trg_len]
+            for src, tgt in train_data_iterator[batch_t%batch_num]:
+                srcs.append(src)
+                tgts.append(tgt)
+            srcs = torch.LongTensor(srcs).to(device)
+            tgts = torch.LongTensor(tgts).to(device)
+            # pred = [batch_size, trg_len, pred_dim]
+            pred = model(srcs, tgts)
+            pred_dim = pred.shape[-1]
 
-        train_data_iterator = prepare_batch_iterator(train_data, Conf.batch_size,\
-            shuffle = True)
-        train_loss = train(model, train_data_iterator, optimizer, criterion, device)
-        average_train_loss = train_loss/sum(train_length_data['tgt'])
-        train_ppl = math.exp(average_train_loss)
+            tgts = tgts.view(-1)
+            pred = pred.view(-1, pred_dim)
 
-        valid_loss = evaluate(model, valid_data_iterator, criterion, device)
-        average_valid_loss = valid_loss/sum(valid_length_data['tgt'])
-        valid_ppl = math.exp(average_valid_loss)
+            loss = criterion(pred, tgts)
+            optimizer.zero_grad()
+            loss.backward()
+            optimizer.step()
+            epoch_loss += loss.item()
+            lens_per_batch += sum(train_tgt_lens[(batch_t%batch_num)*Conf.batch_size:\
+                (batch_t%batch_num+1)*Conf.batch_size])
+            if batch_t%batch_num == 0 and batch_t!=0:
+                train_data_iterator train_tgt_lens = prepare_batch_iterator(train_data, \
+                    train_length_data['tgt'], Conf.batch_size, shuffle = True)
+            if batch_t%Conf.eval_per_batch==0 and batch_t != 0:
+                average_train_loss = epoch_loss/lens_per_batch
+                train_ppl = math.exp(average_train_loss)
+                epoch_loss = 0
+                lens_per_batch = 0
 
-        end_time = time.time()
+                valid_loss = evaluate(model, valid_data_iterator, criterion, device)
+                average_valid_loss = valid_loss/sum(valid_tgt_lens)
+                valid_ppl = math.exp(average_valid_loss)
 
-        epoch_mins, epoch_secs = epoch_time(start_time, end_time)
+                end_time = time.time()
+                epoch_mins, epoch_secs = epoch_time(start_time, end_time)
 
-        if valid_loss < best_valid_loss:
-            best_valid_loss = valid_loss
+                if valid_loss < best_valid_loss:
+                    best_valid_loss = valid_loss
 
-            infer_loss, infer_responses = inferring(model, valid_data_iterator, criterion, ids2word, device)
-            average_infer_loss = infer_loss/sum(valid_length_data['tgt'])
-            infer_ppl = math.exp(average_infer_loss)
+                    infer_loss, infer_responses = inferring(model, valid_data_iterator, criterion, ids2word, device)
+                    average_infer_loss = infer_loss/sum(valid_tgt_lens)
+                    infer_ppl = math.exp(average_infer_loss)
 
-            samples_path = os.path.join(Conf.samples_dir, 'exp_time_{}'.format(exp_time))
-            if not os.path.exists(samples_path):os.makedirs(samples_path)
+                    samples_path = os.path.join(Conf.samples_dir, 'exp_time_{}'.format(exp_time))
+                    if not os.path.exists(samples_path):os.makedirs(samples_path)
 
-            save_metrics_msg(valid_data_iterator, infer_responses,
-                epoch, 0, valid_ppl, ids2word, samples_path)
+                    save_metrics_msg(valid_data_iterator, infer_responses,
+                        epoch, 0, valid_ppl, ids2word, samples_path)
 
-            if not os.path.exists(Conf.checkpt_dir): os.makedirs(Conf.checkpt_dir)
-            model_path = os.path.join(Conf.checkpt_dir, 'tut3-model.pt')
-            torch.save(model.state_dict(), model_path)
+                    if not os.path.exists(Conf.checkpt_dir): os.makedirs(Conf.checkpt_dir)
+                    model_path = os.path.join(Conf.checkpt_dir, 'tut3-model.pt')
+                    torch.save(model.state_dict(), model_path)
 
-        if not os.path.exists(Conf.logging_dir): os.makedirs(Conf.logging_dir)
-        step_msg_path = os.path.join(Conf.logging_dir, 'log_msg_{}'.format(exp_time))
-        save_step_msg(average_train_loss, valid_ppl,
-            epoch, 0, end_time-start_time, step_msg_path)
-        print(f'Epoch: {epoch + 1:02} | Time: {epoch_mins}m {epoch_secs}s')
-        print(f'\t Train. Loss: {average_valid_loss:.3f} |  Train. PPL: {train_ppl:7.3f}')
-        print(f'\t Val. Loss: {average_valid_loss:.3f} |  Val. PPL: {valid_ppl:7.3f}')
-        print(f'\t Val. infer Loss: {average_infer_loss:.3f} |  Val. infer PPL: {infer_ppl:7.3f}')
+                print(f'Epoch: {epoch + 1:02} |Batch: {batch_t + 1:04} |Time: {epoch_mins}m {epoch_secs}s')
+                print(f'\t Train. Loss: {average_valid_loss:.3f} |  Train. PPL: {train_ppl:7.3f}')
+                print(f'\t Val. Loss: {average_valid_loss:.3f} |  Val. PPL: {valid_ppl:7.3f}')
+                print(f'\t Val. infer Loss: {average_infer_loss:.3f} |  Val. infer PPL: {infer_ppl:7.3f}')
+                start_time = time.time()
+
+    else:
+        # train on epoch
+        for epoch in range(Conf.total_epoch_num):
+            start_time = time.time()
+
+            train_data_iterator train_tgt_lens = prepare_batch_iterator(train_data, \
+                train_length_data['tgt'], Conf.batch_size, shuffle = True)
+            train_loss = train(model, train_data_iterator, optimizer, criterion, device)
+            average_train_loss = train_loss/sum(train_tgt_lens)
+            train_ppl = math.exp(average_train_loss)
+
+            valid_loss = evaluate(model, valid_data_iterator, criterion, device)
+            average_valid_loss = valid_loss/sum(valid_tgt_lens)
+            valid_ppl = math.exp(average_valid_loss)
+
+            end_time = time.time()
+
+            epoch_mins, epoch_secs = epoch_time(start_time, end_time)
+
+            if valid_loss < best_valid_loss:
+                best_valid_loss = valid_loss
+
+                infer_loss, infer_responses = inferring(model, valid_data_iterator, criterion, ids2word, device)
+                average_infer_loss = infer_loss/sum(valid_tgt_lens)
+                infer_ppl = math.exp(average_infer_loss)
+
+                samples_path = os.path.join(Conf.samples_dir, 'exp_time_{}'.format(exp_time))
+                if not os.path.exists(samples_path):os.makedirs(samples_path)
+
+                save_metrics_msg(valid_data_iterator, infer_responses,
+                    epoch, 0, valid_ppl, ids2word, samples_path)
+
+                if not os.path.exists(Conf.checkpt_dir): os.makedirs(Conf.checkpt_dir)
+                model_path = os.path.join(Conf.checkpt_dir, 'tut3-model.pt')
+                torch.save(model.state_dict(), model_path)
+
+            if not os.path.exists(Conf.logging_dir): os.makedirs(Conf.logging_dir)
+            step_msg_path = os.path.join(Conf.logging_dir, 'log_msg_{}'.format(exp_time))
+            save_step_msg(average_train_loss, valid_ppl,
+                epoch, 0, end_time-start_time, step_msg_path)
+            print(f'Epoch: {epoch + 1:02} | Time: {epoch_mins}m {epoch_secs}s')
+            print(f'\t Train. Loss: {average_valid_loss:.3f} |  Train. PPL: {train_ppl:7.3f}')
+            print(f'\t Val. Loss: {average_valid_loss:.3f} |  Val. PPL: {valid_ppl:7.3f}')
+            print(f'\t Val. infer Loss: {average_infer_loss:.3f} |  Val. infer PPL: {infer_ppl:7.3f}')
 
     test_data, test_length_data = load_processed_data(Conf.data_dir, 'test')
-    test_data_iterator = prepare_batch_iterator(test_data, Conf.batch_size,\
-        shuffle = False)
+    test_data_iterator, test_tgt_lnes = prepare_batch_iterator(test_data, \
+        test_length_data['tgt'], Conf.batch_size, shuffle = False)
 
     model.load_state_dict(torch.load(model_path))
-    
+
     test_loss, test_responses = inferring(model, test_data_iterator, criterion, ids2word, device)
-    average_test_loss = test_loss/sum(test_length_data['tgt'])
+    average_test_loss = test_loss/sum(test_tgt_lnes)
     test_ppl = math.exp(average_test_loss)
 
     test_samples_path = os.path.join(Conf.testing_dir, 'exp_time_{}'.format(exp_time))

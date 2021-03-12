@@ -144,20 +144,24 @@ def load_processed_data(data_dir, data_type):
     return dialogues, dialogues_len_dict
 
 
-def prepare_batch_iterator(data, batch_size, shuffle = False):
+def prepare_batch_iterator(data, length, batch_size, shuffle = False):
+    data_num = len(data)
+    data_ids = [x for x in range(data_num)]
+
     if shuffle:
-        random.shuffle(data)
+        random.shuffle(data_ids)
 
     batch_iterator = []
-    data_num = len(data)
+    select_lens = []
     batch_num = int(data_num/batch_size)
     left_data_num = data_num - batch_size*batch_num
     print('total data num is {}, create {} batches, left {} samples'.\
         format(data_num, batch_num, left_data_num))
     assert left_data_num >= 0
     batch = []
-    for item in data:
-        batch.append(item)
+    for select_id in data_ids[0:batch_size*batch_num]:
+        batch.append(data[select_id])
+        select_lens.append(length[select_id])
         if len(batch) == batch_size:
             batch_iterator.append(batch)
             batch = []

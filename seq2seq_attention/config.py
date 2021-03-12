@@ -24,6 +24,8 @@ class Config():
         self.vocab_size = 20000
         self.emb_size = 300
 
+        self.use_attention = True
+
         self.enc_hid_dim = 300
         self.enc_num_layer = 1
         self.enc_rnn_type = 'GRU' # only 'LSTM' and 'GRU'
@@ -38,3 +40,4 @@ class Config():
         self.lr = 1e-3
         self.batch_size = 64
         self.total_epoch_num = 20
+        self.eval_per_batch = None # set 'number' of 'None'

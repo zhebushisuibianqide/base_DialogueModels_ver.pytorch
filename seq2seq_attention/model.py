@@ -38,7 +38,7 @@ class Encoder(nn.Module):
                 )
         else:
             raise ValueError('No rnn_type is {}, check the config.'.format(rnn_type))
-        self.fc = nn.Linear(enc_hid_dim * 2, dec_hid_dim)
+        self.fc = nn.Linear(enc_hid_dim * (int(is_bidirectional)+1), dec_hid_dim)
         self.dropout = nn.Dropout(dropout)
 
     def forward(self, src):
@@ -102,7 +102,7 @@ class Attention(nn.Module):
         super(Attention, self).__init__()
         #self.attn = nn.Linear((enc_hid_dim) * 2 + dec_hid_dim, dec_hid_dim, bias=False)
         #self.V = nn.Linear(dec_hid_dim, 1, bias=False)
-        self.fc = nn.Linear(enc_hid_dim * 2, dec_hid_dim, bias=False)
+        self.fc = nn.Linear(enc_hid_dim, dec_hid_dim, bias=False)
 
     def forward(self, s, enc_output):
         # s = [batch_size, dec_hid_dim]
@@ -164,7 +164,7 @@ class Decoder(nn.Module):
                 )
         else:
             raise ValueError('No rnn_type is {}, check the config.'.format(rnn_type))
-        self.fc_out = nn.Linear((enc_hid_dim * 0) + dec_hid_dim + emb_dim, vocab_size)
+        self.fc_out = nn.Linear(enc_hid_dim + dec_hid_dim + emb_dim, vocab_size)
         self.dropout = nn.Dropout(dropout)
 
     def forward(self, dec_input, s, enc_output):
@@ -188,7 +188,17 @@ class Decoder(nn.Module):
             h_t, c_t = s
         else:
             h_t = s
-        a = self.attention(h_t, enc_output).unsqueeze(1)
+
+        if self.attention is not None:
+            # use attention
+            # enc_output = [batch_size, src_len, enc_hid_dim]
+            # c = [batch_size, 1, enc_hid_dim * (is_bi+1)]
+            a = self.attention(h_t, enc_output).unsqueeze(1)
+            c = torch.bmm(a, enc_output)
+            # rnn_input = [batch_size, 1, enc_hid_dim * (is_bi+1) + emb_dim]
+            rnn_input = torch.cat((embedded, c), dim=2)
+        else:
+            rnn_input = embedded
 
         if isinstance(s, tuple):
             if self.num_layer > 1:
@@ -203,16 +213,6 @@ class Decoder(nn.Module):
             else:
                 h_t = h_t.unsqueeze(0)
 
-        # enc_output = [batch_size, src_len, enc_hid_dim * 2]
-        # c = [batch_size, 1, enc_hid_dim * 2]
-        #c = torch.bmm(a, enc_output)
-        #normal seq2seq
-        #c = torch.mean(enc_output, dim=1, keepdim=True)
-
-        # rnn_input = [batch_size, 1, (enc_hid_dim * 2) + emb_dim]
-        #rnn_input = torch.cat((embedded, c), dim=2)
-        rnn_input = embedded
-
         # dec_output = [batch_size, src_len(=1), dec_hid_dim]
         # dec_hidden = [n_layers * num_directions, batch_size, dec_hid_dim]
         if self.rnn_type == 'LSTM':
@@ -225,14 +225,15 @@ class Decoder(nn.Module):
 
         # embedded = [batch_size, 1, emb_dim] -> [batch_size, emb_dim]
         # dec_output = [batch_size, dec_hid_dim]
-        # c = [batch_size, enc_hid_dim * 2]
+        # c = [batch_size, enc_hid_dim]
         embedded = embedded.squeeze(1)
         dec_output = dec_output.squeeze(1)
         #c = c.squeeze(1)
 
         # pred = [batch_size, output_dim]
         #pred = self.fc_out(torch.cat((dec_output, c, embedded), dim=1))
-        pred = self.fc_out(torch.cat((dec_output, embedded), dim=1))
+        pred = F.softmax(self.fc_out(torch.cat((dec_output, embedded), dim=1)),
+            dim = 1)
 
         if self.rnn_type == 'LSTM':
             if self.is_bidirectional:
@@ -265,7 +266,12 @@ class Seq2Seq(nn.Module):
             word2vec = torch.FloatTensor(word2vec)
             self.embedding_matrix = nn.Embedding.from_pretrained(word2vec)
             print('Initializing embedding matrix form pretrained file.')
-        self.attention = Attention(model_config.enc_hid_dim, model_config.dec_hid_dim)
+        if model_config.use_attention:
+            self.attention = Attention(
+                model_config.enc_hid_dim * (int(model_config.enc_is_bidirectional)+1),
+                model_config.dec_hid_dim)
+        else:
+            self.attention = None
         self.encoder = Encoder(
             self.embedding_matrix, model_config.enc_rnn_type, model_config.enc_is_bidirectional, \
             model_config.enc_num_layer, model_config.emb_dim, model_config.enc_hid_dim, \
@@ -273,7 +279,8 @@ class Seq2Seq(nn.Module):
             )
         self.decoder = Decoder(
             self.embedding_matrix, model_config.emb_dim, model_config.vocab_size, \
-            model_config.dec_rnn_type, model_config.dec_num_layer, model_config.enc_hid_dim, \
+            model_config.dec_rnn_type, model_config.dec_num_layer, \
+            model_config.enc_hid_dim * (int(model_config.enc_is_bidirectional)+1), \
             model_config.dec_hid_dim, model_config.dropout, \
             model_config.dec_is_bidirectional, self.attention
             )
