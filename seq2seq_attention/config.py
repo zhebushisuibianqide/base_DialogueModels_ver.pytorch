@@ -6,12 +6,7 @@ class Config():
 
         self.device = '1'
 
-        self.data_name = 'daily'
         self.data_dir = '../data'
-        self.vocab_path = '../data/vocab.nltk.bpe'
-        self.embed_path = '../data/vocab.nltk.bpe_embeddings'
-        #self.embed_path = None
-        self.emb_dim = 300
 
         self.logging_dir = 'log'
         self.samples_dir = 'samples'
@@ -21,8 +16,10 @@ class Config():
         self.max_srclen = 25
         self.max_tgtlen = 25
 
+        self.vocab_path = '../data/vocab'
+        self.embed_path = '../data/vocab_embeddings'
         self.vocab_size = 20000
-        self.emb_size = 300
+        self.emb_dim = 300
 
         self.use_attention = True
 
