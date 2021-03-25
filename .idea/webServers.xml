@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="WebServers">
+    <option name="servers">
+      <webServer id="9d6a2d75-014c-447e-b864-336cd2601fc3" name="rtx2080">
+        <fileTransfer accessType="SFTP" host="10.1.114.125" port="22" sshConfigId="d09652d0-47de-40d2-bac0-158db776ede2" sshConfig="sunbin@10.1.114.125:22 password">
+          <advancedOptions>
+            <advancedOptions dataProtectionLevel="Private" passiveMode="true" shareSSLContext="true" />
+          </advancedOptions>
+        </fileTransfer>
+      </webServer>
+      <webServer id="0f80e175-396d-4144-a2c9-bf6a616ea9c2" name="rtx3090">
+        <fileTransfer accessType="SFTP" host="10.1.114.125" port="22" sshConfigId="d09652d0-47de-40d2-bac0-158db776ede2" sshConfig="sunbin@10.1.114.125:22 password">
+          <advancedOptions>
+            <advancedOptions dataProtectionLevel="Private" passiveMode="true" shareSSLContext="true" />
+          </advancedOptions>
+        </fileTransfer>
+      </webServer>
+    </option>
+  </component>
+</project>
