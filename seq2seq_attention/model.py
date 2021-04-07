@@ -1,14 +1,17 @@
-#_*_ coding=utf-8 _*_
+# _*_ coding=utf-8 _*_
 
 import torch
 import torch.nn as nn
 import torch.optim as optim
 import torch.nn.functional as F
+
 ''' torch version 1.7.1'''
+
+
 # Encoder
 class Encoder(nn.Module):
     def __init__(self, embedding_matrix, rnn_type, is_bidirectional, enc_layer, \
-        emb_dim, enc_hid_dim, dec_hid_dim, dropout):
+                 emb_dim, enc_hid_dim, dec_hid_dim, dropout):
         super().__init__()
         self.rnn_type = rnn_type
         self.is_bidirectional = is_bidirectional
@@ -16,29 +19,35 @@ class Encoder(nn.Module):
         self.embedding = embedding_matrix
         if rnn_type == 'LSTM':
             self.rnn = nn.LSTM(
-                input_size = emb_dim, # The number of expected features in the input x
-                hidden_size = enc_hid_dim, # The number of features in the hidden state h
-                num_layers = enc_layer, # Number of recurrent layers. E.g., setting num_layers=2 would mean stacking two LSTMs together to form a stacked LSTM, with the second LSTM taking in outputs of the first LSTM and computing the final results. Default: 1
-                bias = True, # If False, then the layer does not use bias weights b_ih and b_hh. Default: True
-                batch_first = True, # If True, then the input and output tensors are provided as (batch, seq, feature). Default: False
-                dropout = dropout, # If non-zero, introduces a Dropout layer on the outputs of each LSTM layer except the last layer, with dropout probability equal to dropout. Default: 0
-                bidirectional = is_bidirectional # If True, becomes a bidirectional LSTM. Default: False
-                #proj_size = 0 # If > 0, will use LSTM with projections of corresponding size. Default: 0
-                )
-            #TypeError: __init__() got an unexpected keyword argument 'proj_size'
+                input_size=emb_dim,  # The number of expected features in the input x
+                hidden_size=enc_hid_dim,  # The number of features in the hidden state h
+                num_layers=enc_layer,
+                # Number of recurrent layers. E.g., setting num_layers=2 would mean stacking two LSTMs together to form a stacked LSTM, with the second LSTM taking in outputs of the first LSTM and computing the final results. Default: 1
+                bias=True,  # If False, then the layer does not use bias weights b_ih and b_hh. Default: True
+                batch_first=True,
+                # If True, then the input and output tensors are provided as (batch, seq, feature). Default: False
+                dropout=dropout,
+                # If non-zero, introduces a Dropout layer on the outputs of each LSTM layer except the last layer, with dropout probability equal to dropout. Default: 0
+                bidirectional=is_bidirectional  # If True, becomes a bidirectional LSTM. Default: False
+                # proj_size = 0 # If > 0, will use LSTM with projections of corresponding size. Default: 0
+            )
+            # TypeError: __init__() got an unexpected keyword argument 'proj_size'
         elif rnn_type == 'GRU':
             self.rnn = nn.GRU(
-                input_size = emb_dim, # The number of expected features in the input x
-                hidden_size = enc_hid_dim, # The number of features in the hidden state h
-                num_layers = enc_layer, # Number of recurrent layers. E.g., setting num_layers=2 would mean stacking two GRUs together to form a stacked GRU, with the second GRU taking in outputs of the first GRU and computing the final results. Default: 1
-                bias = True, # If False, then the layer does not use bias weights b_ih and b_hh. Default: True
-                batch_first = True, # If True, then the input and output tensors are provided as (batch, seq, feature). Default: False
-                dropout = dropout, # If non-zero, introduces a Dropout layer on the outputs of each GRU layer except the last layer, with dropout probability equal to dropout. Default: 0
-                bidirectional = is_bidirectional # If True, becomes a bidirectional GRU. Default: False
-                )
+                input_size=emb_dim,  # The number of expected features in the input x
+                hidden_size=enc_hid_dim,  # The number of features in the hidden state h
+                num_layers=enc_layer,
+                # Number of recurrent layers. E.g., setting num_layers=2 would mean stacking two GRUs together to form a stacked GRU, with the second GRU taking in outputs of the first GRU and computing the final results. Default: 1
+                bias=True,  # If False, then the layer does not use bias weights b_ih and b_hh. Default: True
+                batch_first=True,
+                # If True, then the input and output tensors are provided as (batch, seq, feature). Default: False
+                dropout=dropout,
+                # If non-zero, introduces a Dropout layer on the outputs of each GRU layer except the last layer, with dropout probability equal to dropout. Default: 0
+                bidirectional=is_bidirectional  # If True, becomes a bidirectional GRU. Default: False
+            )
         else:
             raise ValueError('No rnn_type is {}, check the config.'.format(rnn_type))
-        self.fc = nn.Linear(enc_hid_dim * (int(is_bidirectional)+1), dec_hid_dim)
+        self.fc = nn.Linear(enc_hid_dim * (int(is_bidirectional) + 1), dec_hid_dim)
         self.dropout = nn.Dropout(dropout)
 
     def forward(self, src):
@@ -58,17 +67,17 @@ class Encoder(nn.Module):
         if self.rnn_type == 'LSTM':
             enc_output, (h_n, c_n) = self.rnn(embedded)  # if h_0 is not give, it will be set 0 acquiescently
             if self.is_bidirectional:
-                enc_h_n = torch.cat((h_n[-2,:,:], h_n[-1,:,:]), dim=1)
-                enc_c_n = torch.cat((c_n[-2,:,:], c_n[-1,:,:]), dim=1)
+                enc_h_n = torch.cat((h_n[-2, :, :], h_n[-1, :, :]), dim=1)
+                enc_c_n = torch.cat((c_n[-2, :, :], c_n[-1, :, :]), dim=1)
             else:
-                enc_h_n = h_n[-1,:,:]
-                enc_c_n = c_n[-1,:,:]
+                enc_h_n = h_n[-1, :, :]
+                enc_c_n = c_n[-1, :, :]
         elif self.rnn_type == 'GRU':
             enc_output, h_n = self.rnn(embedded)
             if self.is_bidirectional:
-                enc_h_n = torch.cat((h_n[-2,:,:], h_n[-1,:,:]), dim=1)
+                enc_h_n = torch.cat((h_n[-2, :, :], h_n[-1, :, :]), dim=1)
             else:
-                enc_h_n = h_n[-1,:,:]
+                enc_h_n = h_n[-1, :, :]
         else:
             raise ValueError('No rnn type is {}, chooes \'LSTM\' or \'GRU\''.format(self.rnn_type))
 
@@ -100,9 +109,10 @@ class Encoder(nn.Module):
 class Attention(nn.Module):
     def __init__(self, enc_hid_dim, dec_hid_dim):
         super(Attention, self).__init__()
-        #self.attn = nn.Linear((enc_hid_dim) * 2 + dec_hid_dim, dec_hid_dim, bias=False)
-        #self.V = nn.Linear(dec_hid_dim, 1, bias=False)
+        # self.attn = nn.Linear((enc_hid_dim) * 2 + dec_hid_dim, dec_hid_dim, bias=False)
+        # self.V = nn.Linear(dec_hid_dim, 1, bias=False)
         self.fc = nn.Linear(enc_hid_dim, dec_hid_dim, bias=False)
+        self.fout = nn.Softmax(dim=1)
 
     def forward(self, s, enc_output):
         # s = [batch_size, dec_hid_dim]
@@ -113,13 +123,13 @@ class Attention(nn.Module):
 
         # repeat decoder hidden state src_len times
         # s = [batch_size, 1, dec_hid_dim]
-        # enc_out_put = [batch_size, seq_len, enc_hid_dim * 2]
-        #s = s.unsqueeze(1).repeat(1, src_len, 1)
+        # enc_out_put = [batch_size, seq_len, enc_hid_dim]
+        # s = s.unsqueeze(1).repeat(1, src_len, 1)
         s = s.unsqueeze(1)
 
         context = torch.tanh(self.fc(enc_output))
 
-        attention = torch.tanh(torch.bmm(s, context.transpose(1,2)).squeeze(1))
+        attention = torch.tanh(torch.bmm(s, context.transpose(1, 2)).squeeze(1))
 
         # energy = [batch_size, src_len, dec_hid_dim]
         # energy = torch.tanh(self.attn(torch.cat((s, enc_output), dim=2)))
@@ -127,12 +137,12 @@ class Attention(nn.Module):
         # attention = [batch_size, src_len]
         # attention = self.V(energy).squeeze(2)
 
-        return F.softmax(attention, dim=1)
+        return self.fout(attention)
 
 
 class Decoder(nn.Module):
-    def __init__(self, embedding_matrix, emb_dim, vocab_size, rnn_type,\
-        dec_layer, enc_hid_dim, dec_hid_dim, dropout, is_bidirectional, attention):
+    def __init__(self, embedding_matrix, emb_dim, vocab_size, rnn_type, \
+                 dec_layer, enc_hid_dim, dec_hid_dim, dropout, is_bidirectional, attention):
 
         super().__init__()
         self.attention = attention
@@ -140,32 +150,43 @@ class Decoder(nn.Module):
         self.rnn_type = rnn_type
         self.is_bidirectional = is_bidirectional
         self.num_layer = dec_layer
+        rnn_input_size = enc_hid_dim + emb_dim if attention is not None else emb_dim
         if rnn_type == 'LSTM':
             self.rnn = nn.LSTM(
-                input_size = enc_hid_dim * 0 + emb_dim, # The number of expected features in the input x
-                hidden_size = dec_hid_dim, # The number of features in the hidden state h
-                num_layers = dec_layer, # Number of recurrent layers. E.g., setting num_layers=2 would mean stacking two LSTMs together to form a stacked LSTM, with the second LSTM taking in outputs of the first LSTM and computing the final results. Default: 1
-                bias = True, # If False, then the layer does not use bias weights b_ih and b_hh. Default: True
-                batch_first = True, # If True, then the input and output tensors are provided as (batch, seq, feature). Default: False
-                dropout = dropout, # If non-zero, introduces a Dropout layer on the outputs of each LSTM layer except the last layer, with dropout probability equal to dropout. Default: 0
-                bidirectional = is_bidirectional # If True, becomes a bidirectional LSTM. Default: False
-                #proj_size = 0 # If > 0, will use LSTM with projections of corresponding size. Default: 0
-                )
-            #TypeError: __init__() got an unexpected keyword argument 'proj_size'
+                input_size=rnn_input_size,  # The number of expected features in the input x
+                hidden_size=dec_hid_dim,  # The number of features in the hidden state h
+                num_layers=dec_layer,
+                # Number of recurrent layers. E.g., setting num_layers=2 would mean stacking two LSTMs together to form a stacked LSTM, with the second LSTM taking in outputs of the first LSTM and computing the final results. Default: 1
+                bias=True,  # If False, then the layer does not use bias weights b_ih and b_hh. Default: True
+                batch_first=True,
+                # If True, then the input and output tensors are provided as (batch, seq, feature). Default: False
+                dropout=dropout,
+                # If non-zero, introduces a Dropout layer on the outputs of each LSTM layer except the last layer, with dropout probability equal to dropout. Default: 0
+                bidirectional=is_bidirectional  # If True, becomes a bidirectional LSTM. Default: False
+                # proj_size = 0 # If > 0, will use LSTM with projections of corresponding size. Default: 0
+            )
+            # TypeError: __init__() got an unexpected keyword argument 'proj_size'
         elif rnn_type == 'GRU':
             self.rnn = nn.GRU(
-                input_size = enc_hid_dim * 0 + emb_dim, # The number of expected features in the input x
-                hidden_size = dec_hid_dim, # The number of features in the hidden state h
-                num_layers = dec_layer, # Number of recurrent layers. E.g., setting num_layers=2 would mean stacking two GRUs together to form a stacked GRU, with the second GRU taking in outputs of the first GRU and computing the final results. Default: 1
-                bias = True, # If False, then the layer does not use bias weights b_ih and b_hh. Default: True
-                batch_first = True, # If True, then the input and output tensors are provided as (batch, seq, feature). Default: False
-                dropout = dropout, # If non-zero, introduces a Dropout layer on the outputs of each GRU layer except the last layer, with dropout probability equal to dropout. Default: 0
-                bidirectional = is_bidirectional # If True, becomes a bidirectional GRU. Default: False
-                )
+                input_size=rnn_input_size,  # The number of expected features in the input x
+                hidden_size=dec_hid_dim,  # The number of features in the hidden state h
+                num_layers=dec_layer,
+                # Number of recurrent layers. E.g., setting num_layers=2 would mean stacking two GRUs together to form a stacked GRU, with the second GRU taking in outputs of the first GRU and computing the final results. Default: 1
+                bias=True,  # If False, then the layer does not use bias weights b_ih and b_hh. Default: True
+                batch_first=True,
+                # If True, then the input and output tensors are provided as (batch, seq, feature). Default: False
+                dropout=dropout,
+                # If non-zero, introduces a Dropout layer on the outputs of each GRU layer except the last layer, with dropout probability equal to dropout. Default: 0
+                bidirectional=is_bidirectional  # If True, becomes a bidirectional GRU. Default: False
+            )
         else:
             raise ValueError('No rnn_type is {}, check the config.'.format(rnn_type))
-        self.fc_out = nn.Linear(enc_hid_dim + dec_hid_dim + emb_dim, vocab_size)
+        if attention is not None:
+            self.fc_out = nn.Linear(enc_hid_dim + dec_hid_dim + emb_dim, vocab_size)
+        else:
+            self.fc_out = nn.Linear(dec_hid_dim + emb_dim, vocab_size)
         self.dropout = nn.Dropout(dropout)
+        self.softmax = nn.Softmax(dim=1)
 
     def forward(self, dec_input, s, enc_output):
         # dec_input = [batch_size]
@@ -202,14 +223,14 @@ class Decoder(nn.Module):
 
         if isinstance(s, tuple):
             if self.num_layer > 1:
-                h_t = h_t.unsqueeze(0).repeat(self.num_layer,1,1)
-                c_t = c_t.unsqueeze(0).repeat(self.num_layer,1,1)
+                h_t = h_t.unsqueeze(0).repeat(self.num_layer, 1, 1)
+                c_t = c_t.unsqueeze(0).repeat(self.num_layer, 1, 1)
             else:
                 h_t = h_t.unsqueeze(0)
                 c_t = c_t.unsqueeze(0)
         else:
             if self.num_layer > 1:
-                h_t = h_t.unsqueeze(0).repeat(self.num_layer,1,1)
+                h_t = h_t.unsqueeze(0).repeat(self.num_layer, 1, 1)
             else:
                 h_t = h_t.unsqueeze(0)
 
@@ -228,26 +249,30 @@ class Decoder(nn.Module):
         # c = [batch_size, enc_hid_dim]
         embedded = embedded.squeeze(1)
         dec_output = dec_output.squeeze(1)
-        #c = c.squeeze(1)
+        # c = c.squeeze(1)
 
         # pred = [batch_size, output_dim]
-        #pred = self.fc_out(torch.cat((dec_output, c, embedded), dim=1))
-        pred = F.softmax(self.fc_out(torch.cat((dec_output, embedded), dim=1)),
-            dim = 1)
+        # pred = self.fc_out(torch.cat((dec_output, c, embedded), dim=1))
+        if self.attention is not None:
+            c = c.squeeze(1)
+            # pred = F.softmax(self.fc_out(torch.cat((dec_output, c, embedded), dim=1)), dim=1)
+            pred = self.fc_out(torch.cat((dec_output, c, embedded), dim=1))
+        else:
+            pred = self.fc_out(torch.cat((dec_output, embedded), dim=1))
 
         if self.rnn_type == 'LSTM':
             if self.is_bidirectional:
-                out_h_n = torch.cat((dec_h_n[-2,:,:], dec_h_n[-1,:,:]), dim=1)
-                out_c_n = torch.cat((dec_c_n[-2,:,:], dec_c_n[-1,:,:]), dim=1)
+                out_h_n = torch.cat((dec_h_n[-2, :, :], dec_h_n[-1, :, :]), dim=1)
+                out_c_n = torch.cat((dec_c_n[-2, :, :], dec_c_n[-1, :, :]), dim=1)
             else:
-                out_h_n = dec_h_n[-1,:,:]
-                out_c_n = dec_c_n[-1,:,:]
+                out_h_n = dec_h_n[-1, :, :]
+                out_c_n = dec_c_n[-1, :, :]
             return pred, (out_h_n, out_c_n)
         elif self.rnn_type == 'GRU':
             if self.is_bidirectional:
-                out_h_n = torch.cat((dec_h_n[-2,:,:], dec_h_n[-1,:,:]), dim=1)
+                out_h_n = torch.cat((dec_h_n[-2, :, :], dec_h_n[-1, :, :]), dim=1)
             else:
-                out_h_n = dec_h_n[-1,:,:]
+                out_h_n = dec_h_n[-1, :, :]
             return pred, out_h_n
         else:
             raise ValueError('No rnn type is {}, chooes \'LSTM\' or \'GRU\''.format(self.rnn_type))
@@ -268,7 +293,7 @@ class Seq2Seq(nn.Module):
             print('Initializing embedding matrix form pretrained file.')
         if model_config.use_attention:
             self.attention = Attention(
-                model_config.enc_hid_dim * (int(model_config.enc_is_bidirectional)+1),
+                model_config.enc_hid_dim * (int(model_config.enc_is_bidirectional) + 1),
                 model_config.dec_hid_dim)
         else:
             self.attention = None
@@ -276,14 +301,14 @@ class Seq2Seq(nn.Module):
             self.embedding_matrix, model_config.enc_rnn_type, model_config.enc_is_bidirectional, \
             model_config.enc_num_layer, model_config.emb_dim, model_config.enc_hid_dim, \
             model_config.dec_hid_dim, model_config.dropout
-            )
+        )
         self.decoder = Decoder(
             self.embedding_matrix, model_config.emb_dim, model_config.vocab_size, \
             model_config.dec_rnn_type, model_config.dec_num_layer, \
-            model_config.enc_hid_dim * (int(model_config.enc_is_bidirectional)+1), \
+            model_config.enc_hid_dim * (int(model_config.enc_is_bidirectional) + 1), \
             model_config.dec_hid_dim, model_config.dropout, \
             model_config.dec_is_bidirectional, self.attention
-            )
+        )
         self.device = device
         self.config = model_config
 
@@ -314,13 +339,13 @@ class Seq2Seq(nn.Module):
             dec_output, s = self.decoder(dec_input, s, enc_output)
 
             # place predictions in a tensor holding predictions for each token
-            outputs[:,t,:] = dec_output
+            outputs[:, t, :] = dec_output
 
             # get the highest predicted token from our predictions
             top1 = dec_output.argmax(1)
 
             # if teacher foring, use actual next token as next input
             # if not, use predicted token
-            dec_input = tgt[:,t] if use_teacher_forcing else top1
+            dec_input = tgt[:, t] if use_teacher_forcing else top1
 
         return outputs

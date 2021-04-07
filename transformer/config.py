@@ -16,24 +16,26 @@ class Config():
         self.max_tgtlen = 25
 
         self.vocab_path = '../data/vocab'
-        self.embed_path = '../data/vocab_embeddings'
+        #self.embed_path = '../data/vocab_embeddings'
+        self.embed_path = None
         self.vocab_size = 20000
-        self.emb_dim = 300
+        self.emb_dim = 512
 
-        self.use_attention = True
+        self.enc_num_block = 6
+        self.enc_head = 8
 
-        self.enc_hid_dim = 300
-        self.enc_num_layer = 1
-        self.enc_rnn_type = 'GRU'  # only 'LSTM' and 'GRU'
-        self.enc_is_bidirectional = True
+        self.dec_num_block = 6
+        self.dec_head = 8
 
-        self.dec_hid_dim = 300
-        self.dec_num_layer = 2
-        self.dec_rnn_type = 'GRU'  # only 'LSTM' and 'GRU'
-        self.dec_is_bidirectional = False
+        self.d_model = 512
+        self.d_k = 64
+        self.d_q = 64
+        self.d_v = 64
+        self.d_ff = 2048
 
-        self.dropout = 0.0
+        self.dropout = 0.1
         self.lr = 1e-3
+        self.warmming_up = 4000
         self.batch_size = 64
         self.total_epoch_num = 10
         self.eval_per_batch = None  # set 'number' of 'None'

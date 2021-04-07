@@ -1,7 +1,7 @@
 import os
 import time
 from config import Config
-from model import Seq2Seq
+from model import Transformer
 from data_utils import read_vocab, read_word2vec, load_processed_data
 from data_utils import prepare_batch_iterator, idslist2sent
 from data_utils import save_metrics_msg, save_step_msg
@@ -170,7 +170,7 @@ def main():
     Conf.vocab_size = len(word2ids.keys())
 
     print('initilize model, loss, optimizer')
-    model = Seq2Seq(Conf, device).to(device)
+    model = Transformer(Conf, device).to(device)
     PAD_IDX = word2ids['<pad>']
     criterion = nn.CrossEntropyLoss(ignore_index=PAD_IDX, reduction='sum').to(device)
     optimizer = optim.Adam(model.parameters(), lr=1e-3)
@@ -238,13 +238,13 @@ def main():
                     if not os.path.exists(samples_path): os.makedirs(samples_path)
 
                     save_metrics_msg(valid_data_iterator, infer_responses,
-                                     int((batch_t+1)/batch_num)+1, batch_t+1, valid_ppl, ids2word, samples_path)
+                                     int((batch_t+1)/batch_num)+1, batch_t, valid_ppl, ids2word, samples_path)
 
                     if not os.path.exists(Conf.checkpt_dir): os.makedirs(Conf.checkpt_dir)
                     model_path = os.path.join(Conf.checkpt_dir, 'tut3-model.pt')
                     torch.save(model.state_dict(), model_path)
 
-                print(f'Epoch: {int((batch_t+1)/batch_num)+1:02} |Batch: {batch_t + 1:04} |Time: {epoch_mins}m {epoch_secs}s')
+                print(f'Epoch: {int((batch_t+1)/batch_num)+1:02} |Batch: {batch_t+1:04} |Time: {epoch_mins}m {epoch_secs}s')
                 print(f'\t Train. Loss: {average_valid_loss:.3f} |  Train. PPL: {train_ppl:7.3f}')
                 print(f'\t Val. Loss: {average_valid_loss:.3f} |  Val. PPL: {valid_ppl:7.3f}')
                 print(f'\t Val. infer Loss: {average_infer_loss:.3f} |  Val. infer PPL: {infer_ppl:7.3f}')
