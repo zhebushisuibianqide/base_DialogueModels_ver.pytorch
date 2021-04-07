@@ -11,6 +11,10 @@ import torch
 from tqdm import tqdm
 import math
 
+def weights_init(m):
+    if isinstance(m,(nn.Conv2d,nn.Linear)):
+        nn.init.xavier_normal_(m.weight, 0.08)
+
 
 def train(model, data_iterator, optimizer, criterion, device):
     model.train()
@@ -171,6 +175,7 @@ def main():
 
     print('initilize model, loss, optimizer')
     model = Transformer(Conf, device).to(device)
+    model.apply(weights_init)
     PAD_IDX = word2ids['<pad>']
     criterion = nn.CrossEntropyLoss(ignore_index=PAD_IDX, reduction='sum').to(device)
     optimizer = optim.Adam(model.parameters(), lr=1e-3)

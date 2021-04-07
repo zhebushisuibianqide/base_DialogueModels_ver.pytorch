@@ -124,10 +124,11 @@ class Transformer(nn.Module):
                                                                      dec_self_attn_mask, dec_enc_attn_mask)
             # place predictions in a tensor holding predictions for each token
             logits = self.projection(dec_output)
-            outputs = logits
+            outputs[:,1:,:] = logits[:,0:-1,:]
         else:
             preds = torch.LongTensor(np.zeros((batch_size, tgt_len))).to(self.device)
             preds[:, 0] = tgt[:, 0]
+
             for t in range(1, tgt_len):
                 # if teacher foring, use actual next token as next input
                 # if not, use predicted token
@@ -144,5 +145,7 @@ class Transformer(nn.Module):
                 outputs[:, t, :] = logits[:,t-1,:]
                 # get the highest predicted token from our predictions
                 preds[:,t] = torch.argmax(logits[:,t-1,:], dim=-1)
+                print(preds)
+
 
         return outputs

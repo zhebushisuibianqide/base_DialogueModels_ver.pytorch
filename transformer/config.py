@@ -33,9 +33,9 @@ class Config():
         self.d_v = 64
         self.d_ff = 2048
 
-        self.dropout = 0.1
+        self.dropout = 0.3
         self.lr = 1e-3
-        self.warmming_up = 4000
+        self.warmming_up = 320000
         self.batch_size = 64
-        self.total_epoch_num = 10
+        self.total_epoch_num = 500
         self.eval_per_batch = None  # set 'number' of 'None'
