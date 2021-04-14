@@ -14,6 +14,9 @@ class Scaled_Dot_Product_Attention(nn.Module):
     def forward(self, Q, K, V, masked=None):
         d_k = K.size(-1)
         QKT = torch.matmul(Q, K.transpose(2, 3)) / math.sqrt(d_k)
+
+        if len(QKT.shape) != 4:
+            QKT.unsqueeze(2)
         if masked is not None:
             QKT.masked_fill_(masked, -1e9)
         att = self.softmax(QKT)
@@ -183,3 +186,15 @@ def get_attn_subsequence_mask(seq):
     subsequence_mask = np.triu(np.ones(attn_shape), k=1) # Upper triangular matrix
     subsequence_mask = torch.from_numpy(subsequence_mask).byte()
     return subsequence_mask # [batch_size, tgt_len, tgt_len]
+
+
+def greedy_decode(model, srcs, tgts, device, config):
+    preds = torch.zeros((config.batch_size, config.max_tgtlen, config.vocab_size)).to(device)
+    tgt_i = tgts[:,0].unsqueeze(1)
+    for i in range(config.max_tgtlen):
+        pred_i = model(srcs, tgt_i, False)
+        preds[:,i,:] = pred_i
+        tgt_i = torch.cat([tgt_i, torch.argmax(pred_i, dim=-1).unsqueeze(1)], 1)
+    #print(tgt_i)
+
+    return preds

@@ -21,6 +21,7 @@ class Config():
         self.vocab_size = 20000
         self.emb_dim = 512
 
+        self.graph_seed = 123456
         self.enc_num_block = 6
         self.enc_head = 8
 
@@ -33,9 +34,9 @@ class Config():
         self.d_v = 64
         self.d_ff = 2048
 
-        self.dropout = 0.3
+        self.dropout = 0.1
         self.lr = 1e-3
-        self.warmming_up = 320000
-        self.batch_size = 64
+        self.warmming_up = 32000
+        self.batch_size = 512
         self.total_epoch_num = 500
         self.eval_per_batch = None  # set 'number' of 'None'

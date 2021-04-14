@@ -1,19 +1,23 @@
 import os
 import time
+import math
+import random
+import numpy as np
+import torch.optim as optim
+import torch.nn as nn
+import torch
+from tqdm import tqdm
+
 from config import Config
 from model import Transformer
 from data_utils import read_vocab, read_word2vec, load_processed_data
 from data_utils import prepare_batch_iterator, idslist2sent
 from data_utils import save_metrics_msg, save_step_msg
-import torch.optim as optim
-import torch.nn as nn
-import torch
-from tqdm import tqdm
-import math
+from module import greedy_decode
 
 def weights_init(m):
     if isinstance(m,(nn.Conv2d,nn.Linear)):
-        nn.init.xavier_normal_(m.weight, 0.08)
+        nn.init.xavier_normal_(m.weight)
 
 
 def train(model, data_iterator, optimizer, criterion, device):
@@ -109,7 +113,7 @@ def evaluate(model, data_iterator, criterion, device):
     return epoch_loss
 
 
-def inferring(model, data_iterator, criterion, id2word, device):
+def inferring(model, data_iterator, criterion, id2word, device, config):
     model.eval()
     epoch_loss = 0
     generate_responses = []
@@ -124,7 +128,8 @@ def inferring(model, data_iterator, criterion, id2word, device):
             srcs = torch.LongTensor(srcs).to(device)
             tgts = torch.LongTensor(tgts).to(device)
             # output = [batch_size, tgt_len, output_dim]
-            output = model(srcs, tgts, False)  # turn off teacher forcing
+            output = greedy_decode(model, srcs, tgts, device, config)
+            #output = model(srcs, tgts, False)  # turn off teacher forcing
 
             output_res_batch = torch.argmax(output, dim=2).tolist()
 
@@ -157,6 +162,14 @@ def main():
     print('load Config')
     Conf = Config()
     os.environ["CUDA_VISIBLE_DEVICES"] = Conf.device
+
+    torch.manual_seed(Conf.graph_seed)
+    torch.cuda.manual_seed(Conf.graph_seed)
+    torch.cuda.manual_seed_all(Conf.graph_seed)  # if you are using multi-GPU.
+    np.random.seed(Conf.graph_seed)  # Numpy module.
+    random.seed(Conf.graph_seed)  # Python random module.
+    torch.backends.cudnn.benchmark = False
+    torch.backends.cudnn.deterministic = True
 
     exp_time = len(os.listdir(Conf.samples_dir)) if os.path.exists(Conf.samples_dir) else 0
 
@@ -235,7 +248,8 @@ def main():
                 if valid_loss < best_valid_loss:
                     best_valid_loss = valid_loss
 
-                    infer_loss, infer_responses = inferring(model, valid_data_iterator, criterion, ids2word, device)
+                    infer_loss, infer_responses = inferring(model, valid_data_iterator, criterion, ids2word, device,
+                                                            Conf)
                     average_infer_loss = infer_loss / (sum(valid_tgt_lens)-len(valid_tgt_lens))
                     infer_ppl = math.exp(average_infer_loss)
 
@@ -278,7 +292,8 @@ def main():
             if valid_loss < best_valid_loss:
                 best_valid_loss = valid_loss
 
-                infer_loss, infer_responses = inferring(model, valid_data_iterator, criterion, ids2word, device)
+                infer_loss, infer_responses = inferring(model, valid_data_iterator, criterion, ids2word, device,
+                                                        Conf)
                 average_infer_loss = infer_loss / (sum(valid_tgt_lens)-len(valid_tgt_lens))
                 infer_ppl = math.exp(average_infer_loss)
 
@@ -307,7 +322,8 @@ def main():
 
     model.load_state_dict(torch.load(model_path))
 
-    test_loss, test_responses = inferring(model, test_data_iterator, criterion, ids2word, device)
+    test_loss, test_responses = inferring(model, test_data_iterator, criterion, ids2word, device,
+                                          Conf)
     average_test_loss = test_loss / (sum(test_tgt_lnes)-len(test_tgt_lnes))
     test_ppl = math.exp(average_test_loss)
 

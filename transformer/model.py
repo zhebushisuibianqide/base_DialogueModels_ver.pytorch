@@ -43,7 +43,7 @@ class Decoder(nn.Module):
         self.layers = nn.ModuleList([DecoderLayer(model_config) \
                                      for _ in range(model_config.dec_num_block)])
 
-    def forward(self, enc_output, dec_input,
+    def forward(self, dec_input, enc_output,
                 dec_self_attn_mask, dec_enc_attn_mask):
         '''
             enc_output = [batch_size, src_len, d_model]
@@ -125,27 +125,18 @@ class Transformer(nn.Module):
             # place predictions in a tensor holding predictions for each token
             logits = self.projection(dec_output)
             outputs[:,1:,:] = logits[:,0:-1,:]
+            return outputs
         else:
-            preds = torch.LongTensor(np.zeros((batch_size, tgt_len))).to(self.device)
-            preds[:, 0] = tgt[:, 0]
+            dec_input_web = self.embedding_matrix(tgt)
+            dec_input_peb = self.pos_emb(tgt)
+            dec_input = dec_input_web + dec_input_peb
+            # insert dec_input token embeddings, previous hidden state and all encoder hidden states
+            # receive output tensor (predictions) and new hidden state
 
-            for t in range(1, tgt_len):
-                # if teacher foring, use actual next token as next input
-                # if not, use predicted token
-                dec_input_web = self.embedding_matrix(preds)
-                dec_input_peb = self.pos_emb(preds)
-                dec_input = dec_input_web + dec_input_peb
-                # insert dec_input token embeddings, previous hidden state and all encoder hidden states
-                # receive output tensor (predictions) and new hidden state
-
-                dec_output, dec_self_attns, dec_enc_attns = self.decoder(dec_input, enc_output,
-                                                                         dec_self_attn_mask, dec_enc_attn_mask)
-                # place predictions in a tensor holding predictions for each token
-                logits = self.projection(dec_output)
-                outputs[:, t, :] = logits[:,t-1,:]
-                # get the highest predicted token from our predictions
-                preds[:,t] = torch.argmax(logits[:,t-1,:], dim=-1)
-                print(preds)
-
-
-        return outputs
+            dec_output, dec_self_attns, dec_enc_attns = self.decoder(dec_input, enc_output,
+                                                                     None, dec_enc_attn_mask)
+            # place predictions in a tensor holding predictions for each token
+            logits = self.projection(dec_output)
+            # get the highest predicted token from our predictions
+            pred = logits[:,-1,:] #torch.argmax(logits[:,-1,:], dim=-1)
+            return pred
