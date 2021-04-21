@@ -584,7 +584,7 @@ def interaction():
         pass
 
     dialogue_models = ['seq2seq_base',
-                       'seq2seq_attention', 'cvae_bow',
+                       'seq2seq_attention', 'cvae',
                        'transformer']
 
     def check_computable_model(model_name):
