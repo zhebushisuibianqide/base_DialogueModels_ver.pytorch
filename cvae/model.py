@@ -225,8 +225,8 @@ class Decoder(nn.Module):
             )
         else:
             raise ValueError('No rnn_type is {}, check the config.'.format(rnn_type))
-        #self.fc_out = nn.Linear(enc_hid_dim + dec_hid_dim + emb_dim + latent_dim, vocab_size)
-        self.fc_out = nn.Linear(dec_hid_dim + latent_dim, vocab_size)
+        self.fc_out = nn.Linear(enc_hid_dim + dec_hid_dim + emb_dim + latent_dim, vocab_size)
+        #self.fc_out = nn.Linear(dec_hid_dim + latent_dim, vocab_size)
         self.dropout = nn.Dropout(dropout)
         self.softmax = nn.Softmax(dim=1)
 
@@ -300,8 +300,8 @@ class Decoder(nn.Module):
         # pred = self.fc_out(torch.cat((dec_output, c, embedded), dim=1))
         c = c.squeeze(1)
         # pred = F.softmax(self.fc_out(torch.cat((dec_output, c, embedded), dim=1)), dim=1)
-        #pred = self.fc_out(torch.cat((dec_output, c, embedded, latent_variables), dim=1))
-        pred = self.fc_out(torch.cat((dec_output, latent_variables), dim=1))
+        pred = self.fc_out(torch.cat((dec_output, c, embedded, latent_variables), dim=1))
+        #pred = self.fc_out(torch.cat((dec_output, latent_variables), dim=1))
 
         if self.rnn_type == 'LSTM':
             if self.is_bidirectional:
