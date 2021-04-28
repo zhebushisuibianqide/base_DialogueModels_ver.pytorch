@@ -36,7 +36,9 @@ class Config():
 
         self.dropout = 0.1
         self.lr = 1e-3
-        self.warmming_up = 32000
+        self.warmming_up = 2000
+        self.StepLR_size = 5
+        self.StepLR_gamma = 0.95
         self.batch_size = 512
-        self.total_epoch_num = 500
+        self.total_epoch_num = 100
         self.eval_per_batch = None  # set 'number' of 'None'

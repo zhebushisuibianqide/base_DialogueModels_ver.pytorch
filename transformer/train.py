@@ -7,12 +7,14 @@ import torch.optim as optim
 import torch.nn as nn
 import torch
 from tqdm import tqdm
+from torch.optim.lr_scheduler import StepLR, ExponentialLR
 
 from config import Config
 from model import Transformer
 from data_utils import read_vocab, read_word2vec, load_processed_data
 from data_utils import prepare_batch_iterator, idslist2sent
 from data_utils import save_metrics_msg, save_step_msg
+from module import GradualWarmupScheduler
 from module import greedy_decode
 
 def weights_init(m):
@@ -20,7 +22,7 @@ def weights_init(m):
         nn.init.xavier_normal_(m.weight)
 
 
-def train(model, data_iterator, optimizer, criterion, device):
+def train(model, data_iterator, optimizer, criterion, scheduler, device):
     model.train()
     epoch_loss = 0
     for i, batch in enumerate(tqdm(data_iterator)):
@@ -47,6 +49,7 @@ def train(model, data_iterator, optimizer, criterion, device):
         optimizer.zero_grad()
         loss.backward()
         optimizer.step()
+        scheduler.step()
         epoch_loss += loss.item()
 
     return epoch_loss
@@ -191,7 +194,13 @@ def main():
     model.apply(weights_init)
     PAD_IDX = word2ids['<pad>']
     criterion = nn.CrossEntropyLoss(ignore_index=PAD_IDX, reduction='sum').to(device)
-    optimizer = optim.Adam(model.parameters(), lr=1e-3)
+    optimizer = optim.Adam(model.parameters(), lr=Conf.lr)
+
+    scheduler_steplr = StepLR(optimizer, step_size=Conf.StepLR_size, gamma=Conf.StepLR_gamma)
+    scheduler_warmup = GradualWarmupScheduler(optimizer, \
+                                              multiplier=1, total_epoch=Conf.warmming_up, \
+                                              after_scheduler=scheduler_steplr)
+
 
     best_valid_loss = float('inf')
 
@@ -207,6 +216,7 @@ def main():
         lens_per_batch = 0
         for batch_t in tqdm(range(Conf.total_epoch_num * batch_num)):
             model.train()
+
             srcs = []
             tgts = []  # trg = [batch_size，trg_len]
             for src, tgt in train_data_iterator[batch_t % batch_num]:
@@ -225,6 +235,7 @@ def main():
             optimizer.zero_grad()
             loss.backward()
             optimizer.step()
+            scheduler_warmup.step()
             epoch_loss += loss.item()
             lens_per_batch += sum(train_tgt_lens[(batch_t % batch_num) * Conf.batch_size: \
                                                  (batch_t % batch_num + 1) * Conf.batch_size])-len(srcs)
@@ -273,11 +284,12 @@ def main():
         # train on epoch
         for epoch in range(Conf.total_epoch_num):
             start_time = time.time()
+            print(optimizer.state_dict()['param_groups'][0]['lr'])
 
             train_data_iterator, train_tgt_lens = prepare_batch_iterator(train_data, \
                                                                          train_length_data['tgt'], Conf.batch_size,
                                                                          shuffle=True)
-            train_loss = train(model, train_data_iterator, optimizer, criterion, device)
+            train_loss = train(model, train_data_iterator, optimizer, criterion, scheduler_warmup, device)
             average_train_loss = train_loss / (sum(train_tgt_lens)-len(train_tgt_lens))
             train_ppl = math.exp(average_train_loss)
 

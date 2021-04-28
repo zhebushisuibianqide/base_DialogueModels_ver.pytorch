@@ -156,6 +156,36 @@ class NormalMetrics():
         else:
             return len(set(ngrams_list)) / len(ngrams_list)
 
+
+    def get_batch_distinct(self, n, batch_size, mode='gen_responses'):
+        """
+        Function: 计算每个batch的 true_responses、gen_responses的ngrams的type-token ratio
+        Return: ngrams-based type-token ratio
+        """
+        ngrams_list = []
+        if mode == 'true_responses':
+            responses = self.true_responses
+        else:
+            responses = self.gen_responses
+
+        batch_distinct = []
+        for idx, response in enumerate(responses):
+            if idx and idx%batch_size == 0:
+                if len(ngrams_list) == 0:
+                    batch_distinct.append(0)
+                else:
+                    batch_distinct.append(len(set(ngrams_list)) / len(ngrams_list))
+                ngrams_list = []
+
+            tokens = _response_tokenize(response)
+            ngrams_list.extend([element for element in ngrams(tokens, n)])
+
+        if len(batch_distinct) == 0:
+            return 0
+        else:
+            return sum(batch_distinct) / len(batch_distinct)
+
+
     def get_response_length(self):
         """ Reference:
              1. paper : Iulian V. Serban,et al. A Deep Reinforcement Learning Chatbot
@@ -514,9 +544,12 @@ def getMetricsMsg(file_path, vocab, word2vec, model_path):
     print('Dist-1,2,3 : {},{},{}'.format(Dist_1, Dist_2, Dist_3))
     print('Dist-S : {}'.format(Dist_S))
 
-    distinct_1 = metrics.get_distinct(1)
-    distinct_2 = metrics.get_distinct(2)
-    distinct_3 = metrics.get_distinct(3)
+    # distinct_1 = metrics.get_distinct(1)
+    # distinct_2 = metrics.get_distinct(2)
+    # distinct_3 = metrics.get_distinct(3)
+    distinct_1 = metrics.get_batch_distinct(1, 64)
+    distinct_2 = metrics.get_batch_distinct(2, 64)
+    distinct_3 = metrics.get_batch_distinct(3, 64)
     print('distinct-1,2,3 : {:0>.4f},{:0>.4f},{:0>.4f}'.format(distinct_1, distinct_2, distinct_3))
     response_length = metrics.get_response_length()
     print('response_length : {}'.format(response_length))
@@ -651,70 +684,72 @@ def save_metrics(model_name, write_data_msg, write_metrics_results):
     with open('metrics_results/results.txt', 'a', encoding='utf-8') as f:
         f.write(model_name + '\n')
         f.write('valid data msg:\n')
-        data_msg_title = '\t'.join(['Total_num', 'Valid_num', 'avg_cxt_len', 'avg_gtr_len', 'avg_ger_len'])
-        f.write(data_msg_title + '\n')
-        f.write('\t'.join([str(x) for x in write_data_msg['valid']]) + '\n')
-        f.write('valid metrics results:\n')
-        metrics_titles = '\t'.join(['epx_time', \
-                                    'Token', 'Dist-1', 'Dist-2', 'Dist-3', 'Dist-S', \
-                                    'distinct-1', 'distinct-2', 'distinct-3', 'response-length', \
-                                    'Bleu-1', 'Bleu-2', 'Bleu-3', 'Bleu-4', \
-                                    'Greedy', 'Average', 'Extrema', 'embedding_based_avg', \
-                                    'Coherence'])
-        f.write(metrics_titles + '\n')
-        for i in range(len(write_metrics_results['valid'])):
-            write_line = 'exp_{}\t{}\t{}\t{}\t{}\t{}\t{:0>.4f}\t{:0>.4f}\t{:0>.4f}\t\
-                    {:0>.2f}\t{:0>.4f}\t{:0>.4f}\t{:0>.4f}\t{:0>.4f}\t\
-                    {:0>.4f}\t{:0>.4f}\t{:0>.4f}\t{:0>.4f}\t{:0>.4f}\n'.format( \
-                i, *write_metrics_results['valid'][i])
+        if len(write_metrics_results['valid']) != 0:
+            data_msg_title = '\t'.join(['Total_num', 'Valid_num', 'avg_cxt_len', 'avg_gtr_len', 'avg_ger_len'])
+            f.write(data_msg_title + '\n')
+            f.write('\t'.join([str(x) for x in write_data_msg['valid']]) + '\n')
+            f.write('valid metrics results:\n')
+            metrics_titles = '\t'.join(['epx_time', \
+                                        'Token', 'Dist-1', 'Dist-2', 'Dist-3', 'Dist-S', \
+                                        'distinct-1', 'distinct-2', 'distinct-3', 'response-length', \
+                                        'Bleu-1', 'Bleu-2', 'Bleu-3', 'Bleu-4', \
+                                        'Greedy', 'Average', 'Extrema', 'embedding_based_avg', \
+                                        'Coherence'])
+            f.write(metrics_titles + '\n')
+            for i in range(len(write_metrics_results['valid'])):
+                write_line = 'exp_{}\t{}\t{}\t{}\t{}\t{}\t{:0>.4f}\t{:0>.4f}\t{:0>.4f}\t\
+                        {:0>.2f}\t{:0>.4f}\t{:0>.4f}\t{:0>.4f}\t{:0>.4f}\t\
+                        {:0>.4f}\t{:0>.4f}\t{:0>.4f}\t{:0>.4f}\t{:0>.4f}\n'.format( \
+                    i, *write_metrics_results['valid'][i])
+                f.write(write_line)
+            f.write('average and std.\n')
+            average_metrics = list(np.average(write_metrics_results['valid'], 0))
+            std_metrics = list(np.std(write_metrics_results['valid'], axis=0))
+            write_line = 'exp_avg\t{}\t{}\t{}\t{}\t{}\t{:0>.4f}\t{:0>.4f}\t{:0>.4f}\t\
+                        {:0>.2f}\t{:0>.4f}\t{:0>.4f}\t{:0>.4f}\t{:0>.4f}\t\
+                        {:0>.4f}\t{:0>.4f}\t{:0>.4f}\t{:0>.4f}\t{:0>.4f}\n'.format( \
+                *average_metrics)
             f.write(write_line)
-        f.write('average and std.\n')
-        average_metrics = list(np.average(write_metrics_results['valid'], 0))
-        std_metrics = list(np.std(write_metrics_results['valid'], axis=0))
-        write_line = 'exp_avg\t{}\t{}\t{}\t{}\t{}\t{:0>.4f}\t{:0>.4f}\t{:0>.4f}\t\
-                    {:0>.2f}\t{:0>.4f}\t{:0>.4f}\t{:0>.4f}\t{:0>.4f}\t\
-                    {:0>.4f}\t{:0>.4f}\t{:0>.4f}\t{:0>.4f}\t{:0>.4f}\n'.format( \
-            *average_metrics)
-        f.write(write_line)
-        write_line = 'exp_avg\t{:0>.3f}\t{:0>.3f}\t{:0>.3f}\t{:0>.3f}\t{:0>.3f}\t\
-                {:0>.3f}\t{:0>.3f}\t{:0>.3f}\t{:0>.3f}\t{:0>.3f}\t{:0>.3f}\t{:0>.3f}\t\
-                {:0>.3f}\t{:0>.3f}\t{:0>.3f}\t{:0>.3f}\t{:0>.3f}\t{:0>.3f}\n'.format( \
-            *std_metrics)
-        f.write(write_line)
+            write_line = 'exp_avg\t{:0>.3f}\t{:0>.3f}\t{:0>.3f}\t{:0>.3f}\t{:0>.3f}\t\
+                    {:0>.3f}\t{:0>.3f}\t{:0>.3f}\t{:0>.3f}\t{:0>.3f}\t{:0>.3f}\t{:0>.3f}\t\
+                    {:0>.3f}\t{:0>.3f}\t{:0>.3f}\t{:0>.3f}\t{:0>.3f}\t{:0>.3f}\n'.format( \
+                *std_metrics)
+            f.write(write_line)
 
         f.write('\n')
 
         f.write('test data msg:\n')
-        data_msg_title = '\t'.join(['Total_num', 'Valid_num', 'avg_cxt_len', 'avg_gtr_len', 'avg_ger_len'])
-        f.write(data_msg_title + '\n')
-        f.write('\t'.join([str(x) for x in write_data_msg['test']]) + '\n')
-        f.write('test metrics results:\n')
-        metrics_titles = '\t'.join(['epx_time', \
-                                    'Token', 'Dist-1', 'Dist-2', 'Dist-3', 'Dist-S', \
-                                    'distinct-1', 'distinct-2', 'distinct-3', 'response-length', \
-                                    'Bleu-1', 'Bleu-2', 'Bleu-3', 'Bleu-4', \
-                                    'Greedy', 'Average', 'Extrema', 'embedding_based_avg', \
-                                    'Coherence'])
-        f.write(metrics_titles + '\n')
-        for i in range(len(write_metrics_results['test'])):
-            write_line = 'exp_{}\t{}\t{}\t{}\t{}\t{}\t{:0>.4f}\t{:0>.4f}\t{:0>.4f}\t\
-                    {:0>.2f}\t{:0>.4f}\t{:0>.4f}\t{:0>.4f}\t{:0>.4f}\t\
-                    {:0>.4f}\t{:0>.4f}\t{:0>.4f}\t{:0>.4f}\t{:0>.4f}\n'.format( \
-                i, *write_metrics_results['valid'][i])
+        if len(write_metrics_results['test']) != 0:
+            data_msg_title = '\t'.join(['Total_num', 'Valid_num', 'avg_cxt_len', 'avg_gtr_len', 'avg_ger_len'])
+            f.write(data_msg_title + '\n')
+            f.write('\t'.join([str(x) for x in write_data_msg['test']]) + '\n')
+            f.write('test metrics results:\n')
+            metrics_titles = '\t'.join(['epx_time', \
+                                        'Token', 'Dist-1', 'Dist-2', 'Dist-3', 'Dist-S', \
+                                        'distinct-1', 'distinct-2', 'distinct-3', 'response-length', \
+                                        'Bleu-1', 'Bleu-2', 'Bleu-3', 'Bleu-4', \
+                                        'Greedy', 'Average', 'Extrema', 'embedding_based_avg', \
+                                        'Coherence'])
+            f.write(metrics_titles + '\n')
+            for i in range(len(write_metrics_results['test'])):
+                write_line = 'exp_{}\t{}\t{}\t{}\t{}\t{}\t{:0>.4f}\t{:0>.4f}\t{:0>.4f}\t\
+                        {:0>.2f}\t{:0>.4f}\t{:0>.4f}\t{:0>.4f}\t{:0>.4f}\t\
+                        {:0>.4f}\t{:0>.4f}\t{:0>.4f}\t{:0>.4f}\t{:0>.4f}\n'.format( \
+                    i, *write_metrics_results['test'][i])
+                f.write(write_line)
+            f.write('average and std.\n')
+            average_metrics = list(np.average(write_metrics_results['test'], 0))
+            std_metrics = list(np.std(write_metrics_results['test'], axis=0))
+            write_line = 'exp_avg\t{}\t{}\t{}\t{}\t{}\t{:0>.4f}\t{:0>.4f}\t{:0>.4f}\t\
+                        {:0>.2f}\t{:0>.4f}\t{:0>.4f}\t{:0>.4f}\t{:0>.4f}\t\
+                        {:0>.4f}\t{:0>.4f}\t{:0>.4f}\t{:0>.4f}\t{:0>.4f}\n'.format( \
+                *average_metrics)
             f.write(write_line)
-        f.write('average and std.\n')
-        average_metrics = list(np.average(write_metrics_results['test'], 0))
-        std_metrics = list(np.std(write_metrics_results['test'], axis=0))
-        write_line = 'exp_avg\t{}\t{}\t{}\t{}\t{}\t{:0>.4f}\t{:0>.4f}\t{:0>.4f}\t\
-                    {:0>.2f}\t{:0>.4f}\t{:0>.4f}\t{:0>.4f}\t{:0>.4f}\t\
-                    {:0>.4f}\t{:0>.4f}\t{:0>.4f}\t{:0>.4f}\t{:0>.4f}\n'.format( \
-            *average_metrics)
-        f.write(write_line)
-        write_line = 'exp_avg\t{:0>.3f}\t{:0>.3f}\t{:0>.3f}\t{:0>.3f}\t{:0>.3f}\t\
-                {:0>.3f}\t{:0>.3f}\t{:0>.3f}\t{:0>.3f}\t{:0>.3f}\t{:0>.3f}\t{:0>.3f}\t\
-                {:0>.3f}\t{:0>.3f}\t{:0>.3f}\t{:0>.3f}\t{:0>.3f}\t{:0>.3f}\n'.format( \
-            *std_metrics)
-        f.write(write_line)
+            write_line = 'exp_avg\t{:0>.3f}\t{:0>.3f}\t{:0>.3f}\t{:0>.3f}\t{:0>.3f}\t\
+                    {:0>.3f}\t{:0>.3f}\t{:0>.3f}\t{:0>.3f}\t{:0>.3f}\t{:0>.3f}\t{:0>.3f}\t\
+                    {:0>.3f}\t{:0>.3f}\t{:0>.3f}\t{:0>.3f}\t{:0>.3f}\t{:0>.3f}\n'.format( \
+                *std_metrics)
+            f.write(write_line)
         f.write('\n')
 
 
