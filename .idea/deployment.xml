@@ -2,6 +2,13 @@
 <project version="4">
   <component name="PublishConfigData" autoUpload="Always" serverName="sunbin@10.1.114.125:22 password" remoteFilesAllowedToDisappearOnAutoupload="false">
     <serverData>
+      <paths name="out_remote_3090">
+        <serverdata>
+          <mappings>
+            <mapping deploy="/projects/GitHub/base_DialogueModels_ver.pytorch" local="$PROJECT_DIR$" web="/" />
+          </mappings>
+        </serverdata>
+      </paths>
       <paths name="rtx3090">
         <serverdata>
           <mappings>

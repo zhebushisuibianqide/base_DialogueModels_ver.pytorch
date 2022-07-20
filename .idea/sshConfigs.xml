@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="SshConfigs">
+    <configs>
+      <sshConfig authType="PASSWORD" host="47.94.128.214" id="73468546-2d36-4495-84e6-a3cbc8111572" port="40125" nameFormat="DESCRIPTIVE" username="sunbin" />
+    </configs>
+  </component>
+</project>

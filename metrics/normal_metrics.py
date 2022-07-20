@@ -11,6 +11,7 @@ from collections import Counter
 from nltk import bigrams, FreqDist
 from tqdm import tqdm
 from math import inf
+import argparse
 
 
 def _response_tokenize(response):
@@ -450,9 +451,12 @@ def read_vocab(vocab_path):
     with open(vocab_path, 'r', encoding='utf-8') as f:
         lines = f.readlines()
     vocab = dict()
-    for l in lines:
-        w, idx = l.strip('\n').split('\t')
-        vocab[w.lstrip('__')] = int(idx.strip('-'))
+    # for l in lines:
+    #     w, idx = l.strip('\n').split('\t')
+    #     vocab[w.lstrip('__')] = int(idx.strip('-'))
+    for idx, l in enumerate(lines):
+        w = l.strip('\n')
+        vocab[w] = int(idx)
     return vocab
 
 
@@ -461,8 +465,10 @@ def read_word2vec(word2vec_path):
         lines = f.readlines()
     word2vec = dict()
     for l in lines:
-        w, vec = l.strip('\n').split('\t')
-        word2vec[w.lstrip('__')] = [float(x) for x in vec.split(' ')]
+        # w, vec = l.strip('\n').split('\t')
+        # word2vec[w.lstrip('__')] = [float(x) for x in vec.split(' ')]
+        w, vec = l.strip('\n').split(' ')[0], l.strip('\n').split(' ')[1:]
+        word2vec[w] = [float(x) for x in vec]
     return word2vec
 
 
@@ -581,7 +587,7 @@ def getMetricsMsg(file_path, vocab, word2vec, model_path):
     return data_msg, metrics_results
 
 
-def interaction():
+def interaction(args):
     ''' the interface of users
     checking every needable files, if not exists, creating them.
     '''
@@ -595,13 +601,13 @@ def interaction():
     if data_dir_res is '  ... Error': return False
 
     print('  checking \'word2vec file\'...')
-    data_dir_res = '  ... OK' if os.path.exists('../data/vocab_embeddings') \
+    data_dir_res = '  ... OK' if os.path.exists(args.word2vec_path) \
         else '  ... Not Exist'
     print(data_dir_res)
     if data_dir_res is '  ... Not Exist': return False
 
     print('  checking \'vocab file\'...')
-    data_dir_res = '  ... OK' if os.path.exists('../data/vocab') \
+    data_dir_res = '  ... OK' if os.path.exists(args.vocab_path) \
         else '  ... Not Exist'
     print(data_dir_res)
     if data_dir_res is '  ... Not Exist': return False
@@ -672,7 +678,7 @@ def getTheTargetFileName(file_list):
     target_name = None
     target_ppl = inf
     for file_name in file_list:
-        file_ppl = float(re.findall('ppl_(.*?).results', file_name)[0])
+        file_ppl = float(re.findall('ppl_(.*?)_result', file_name)[0])
         if file_ppl < target_ppl:
             target_name = file_name
             target_ppl = file_ppl
@@ -754,7 +760,13 @@ def save_metrics(model_name, write_data_msg, write_metrics_results):
 
 
 if __name__ == '__main__':
-    model_name = interaction()
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--vocab_path', type=str, help='list your vocab path')
+    parser.add_argument('--word2vec_path', type=str, help='list your word2vec path')
+
+    args = parser.parse_args()
+
+    model_name = interaction(args)
     if model_name is False:
         pass
     else:
@@ -773,8 +785,8 @@ if __name__ == '__main__':
                     print('  file name : {}'.format(target_name))
                     file_path = os.path.join('..', model_name, 'samples', 'exp_time_{}'.format(idx), target_name)
                     data_msg, metrics_results = getMetricsMsg(file_path,
-                                                              vocab=read_vocab('../data/vocab'),
-                                                              word2vec=read_word2vec('../data/vocab_embeddings'),
+                                                              vocab=read_vocab(args.vocab_path),
+                                                              word2vec=read_word2vec(args.word2vec_path),
                                                               model_path='lm_path')
                     if idx == 0: write_data_msg['valid'] = data_msg
                     write_metrics_results['valid'].append(metrics_results)
@@ -792,8 +804,8 @@ if __name__ == '__main__':
                     print('  file name : {}'.format(target_name))
                     file_path = os.path.join('..', model_name, 'test_samples', 'exp_time_{}'.format(idx), target_name)
                     data_msg, metrics_results = getMetricsMsg(file_path,
-                                                              vocab=read_vocab('../data/vocab'),
-                                                              word2vec=read_word2vec('../data/vocab_embeddings'),
+                                                              vocab=read_vocab(args.vocab_path),
+                                                              word2vec=read_word2vec(args.word2vec_path),
                                                               model_path='lm_path')
                     if idx == 0: write_data_msg['test'] = data_msg
                     write_metrics_results['test'].append(metrics_results)

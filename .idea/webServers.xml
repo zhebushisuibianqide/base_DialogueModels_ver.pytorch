@@ -16,6 +16,13 @@
           </advancedOptions>
         </fileTransfer>
       </webServer>
+      <webServer id="73f50aa8-60bb-4601-81ae-c06976a7f35c" name="out_remote_3090">
+        <fileTransfer rootFolder="/home/sunbin" accessType="SFTP" host="47.94.128.214" port="40125" sshConfigId="73468546-2d36-4495-84e6-a3cbc8111572" sshConfig="sunbin@47.94.128.214:40125 password">
+          <advancedOptions>
+            <advancedOptions dataProtectionLevel="Private" passiveMode="true" shareSSLContext="true" />
+          </advancedOptions>
+        </fileTransfer>
+      </webServer>
     </option>
   </component>
 </project>

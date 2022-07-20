@@ -3,7 +3,7 @@
 
 class Config():
     def __init__(self):
-        self.device = '0'
+        self.device = '1'
 
         self.logging_dir = 'log'
         self.samples_dir = 'samples'
