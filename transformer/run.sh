@@ -1,0 +1,1 @@
+python Transformer/train.py --data_dir $data_dir/opensubtitles_200k --model_save_dir $model_save_dir --log_dir log

@@ -78,8 +78,11 @@ class Transformer(nn.Module):
             word2vec = torch.FloatTensor(word2vec)
             self.embedding_matrix = nn.Embedding.from_pretrained(word2vec)
             print('Initializing embedding matrix form pretrained file.')
+        #self.pos_emb = nn.Embedding.from_pretrained(
+        #    get_sinusoid_encoding_table(model_config.vocab_size, model_config.d_model),
+        #    freeze=True) # freeze : default is True
         self.pos_emb = nn.Embedding.from_pretrained(
-            get_sinusoid_encoding_table(model_config.vocab_size, model_config.d_model),
+            get_sinusoid_encoding_table(model_config.max_uttlen+1, model_config.d_model),
             freeze=True) # freeze : default is True
         self.encoder = Encoder(model_config)
         self.decoder = Decoder(model_config)
@@ -87,7 +90,7 @@ class Transformer(nn.Module):
         self.device = device
         self.config = model_config
 
-    def forward(self, src, tgt, use_teacher_forcing=True):
+    def forward(self, src, tgt, src_pos, tgt_pos, use_teacher_forcing=True):
         # src = [batch_size, src_len]
         # tgt = [batch_size, tgt_len]
         # teacher_foring_radio is probability to use teacher forcing
@@ -97,25 +100,25 @@ class Transformer(nn.Module):
         tgt_vocab_size = self.config.vocab_size
 
         # tensor to store decoder outputs
-        outputs = torch.zeros(batch_size, tgt_len, tgt_vocab_size).to(self.device)
+        outputs = torch.zeros(batch_size, tgt_len-1, tgt_vocab_size).to(self.device)
 
         enc_input_web = self.embedding_matrix(src)
-        enc_input_peb = self.pos_emb(src)
+        enc_input_peb = self.pos_emb(src_pos)
         enc_input = enc_input_web+enc_input_peb
         enc_self_attn_mask = get_attn_pad_mask(src, src)
         # enc_output is all hidden states of the input sequence, back and forwards
         # s is the final forward and backward hidden states, passed through a linear layer
         enc_output, att = self.encoder(enc_input, enc_self_attn_mask)
 
-        dec_self_attn_pad_mask = get_attn_pad_mask(tgt, tgt).to(self.device)  # [batch_size, tgt_len, tgt_len]
-        dec_self_attn_subsequent_mask = get_attn_subsequence_mask(tgt).to(self.device)  # [batch_size, 1]
-        dec_self_attn_mask = torch.gt((dec_self_attn_pad_mask + dec_self_attn_subsequent_mask),
-                                      0).to(self.device)  # [batch_size, tgt_len, tgt_len]
-        dec_enc_attn_mask = get_attn_pad_mask(tgt, src).to(self.device)
-
         if use_teacher_forcing:
+            dec_self_attn_pad_mask = get_attn_pad_mask(tgt, tgt).to(self.device)  # [batch_size, tgt_len, tgt_len]
+            dec_self_attn_subsequent_mask = get_attn_subsequence_mask(tgt).to(self.device)  # [batch_size, 1]
+            dec_self_attn_mask = torch.gt((dec_self_attn_pad_mask + dec_self_attn_subsequent_mask),
+                                      0).to(self.device)  # [batch_size, tgt_len, tgt_len]
+            dec_enc_attn_mask = get_attn_pad_mask(tgt, src).to(self.device)
+        
             dec_input_web = self.embedding_matrix(tgt)
-            dec_input_peb = self.pos_emb(tgt)
+            dec_input_peb = self.pos_emb(tgt_pos)
             dec_input = dec_input_web + dec_input_peb
             # insert dec_input token embeddings, previous hidden state and all encoder hidden states
             # receive output tensor (predictions) and new hidden state
@@ -124,19 +127,20 @@ class Transformer(nn.Module):
                                                                      dec_self_attn_mask, dec_enc_attn_mask)
             # place predictions in a tensor holding predictions for each token
             logits = self.projection(dec_output)
-            outputs[:,1:,:] = logits[:,0:-1,:]
+            outputs[:,0:,:] = logits[:,0:-1,:].contiguous()
             return outputs
         else:
-            dec_input_web = self.embedding_matrix(tgt)
-            dec_input_peb = self.pos_emb(tgt)
-            dec_input = dec_input_web + dec_input_peb
-            # insert dec_input token embeddings, previous hidden state and all encoder hidden states
-            # receive output tensor (predictions) and new hidden state
+            return enc_output
+#             dec_input_web = self.embedding_matrix(tgt)
+#             dec_input_peb = self.pos_emb(tgt_pos)
+#             dec_input = dec_input_web + dec_input_peb
+#             # insert dec_input token embeddings, previous hidden state and all encoder hidden states
+#             # receive output tensor (predictions) and new hidden state
 
-            dec_output, dec_self_attns, dec_enc_attns = self.decoder(dec_input, enc_output,
-                                                                     None, dec_enc_attn_mask)
-            # place predictions in a tensor holding predictions for each token
-            logits = self.projection(dec_output)
-            # get the highest predicted token from our predictions
-            pred = logits[:,-1,:] #torch.argmax(logits[:,-1,:], dim=-1)
-            return pred
+#             dec_output, dec_self_attns, dec_enc_attns = self.decoder(dec_input, enc_output,
+#                                                                      None, dec_enc_attn_mask)
+#             # place predictions in a tensor holding predictions for each token
+#             logits = self.projection(dec_output)
+#             # get the highest predicted token from our predictions
+#             pred = logits[:,-1,:] #torch.argmax(logits[:,-1,:], dim=-1)
+#             return pred

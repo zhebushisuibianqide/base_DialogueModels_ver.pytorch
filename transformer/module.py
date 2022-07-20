@@ -47,7 +47,9 @@ class GradualWarmupScheduler(_LRScheduler):
             epoch = self.last_epoch + 1
         self.last_epoch = epoch if epoch != 0 else 1  # ReduceLROnPlateau is called at the end of epoch, whereas others are called at beginning
         if self.last_epoch <= self.total_epoch:
-            warmup_lr = [base_lr * ((self.multiplier - 1.) * self.last_epoch / self.total_epoch + 1.) for base_lr in
+#             warmup_lr = [base_lr * ((self.multiplier - 1.) * self.last_epoch / self.total_epoch + 1.) for base_lr in
+#                          self.base_lrs]
+            warmup_lr = [base_lr * (self.last_epoch / self.total_epoch + 0.0) for base_lr in
                          self.base_lrs]
             for param_group, lr in zip(self.optimizer.param_groups, warmup_lr):
                 param_group['lr'] = lr
@@ -82,7 +84,7 @@ class Scaled_Dot_Product_Attention(nn.Module):
         if len(QKT.shape) != 4:
             QKT.unsqueeze(2)
         if masked is not None:
-            QKT.masked_fill_(masked, -1e9)
+            QKT = QKT.masked_fill(masked, -1e9)
         att = self.softmax(QKT)
         V = torch.matmul(att, V)
         return V, att
@@ -184,7 +186,7 @@ class DecoderLayer(nn.Module):
                                                  model_config.d_q,
                                                  model_config.d_k,
                                                  model_config.d_v,
-                                                 model_config.enc_head,
+                                                 model_config.dec_head,
                                                  self.self_att,
                                                  model_config.dropout)
         self.att = Scaled_Dot_Product_Attention()
@@ -192,7 +194,7 @@ class DecoderLayer(nn.Module):
                                                  model_config.d_q,
                                                  model_config.d_k,
                                                  model_config.d_v,
-                                                 model_config.enc_head,
+                                                 model_config.dec_head,
                                                  self.att,
                                                  model_config.dropout)
         self.pos_ffn = Position_wise_Feed_Forward_Network(model_config.d_model,
@@ -252,13 +254,36 @@ def get_attn_subsequence_mask(seq):
     return subsequence_mask # [batch_size, tgt_len, tgt_len]
 
 
-def greedy_decode(model, srcs, tgts, device, config):
+def greedy_decode(model, srcs, tgts, src_pos, tgt_pos, device, config):
+    enc_output = model(srcs, tgts, src_pos, tgt_pos, use_teacher_forcing=False)
     preds = torch.zeros((config.batch_size, config.max_tgtlen, config.vocab_size)).to(device)
     tgt_i = tgts[:,0].unsqueeze(1)
+    tgt_pos_i = tgt_pos[:,0].unsqueeze(1)
+    Stop_Flag = torch.zeros((config.batch_size)).to(device)
     for i in range(config.max_tgtlen):
-        pred_i = model(srcs, tgt_i, False)
+        # building mask
+        dec_self_attn_pad_mask = get_attn_pad_mask(tgt_i, tgt_i).to(device)  # [batch_size, tgt_len, tgt_len]
+        dec_self_attn_subsequent_mask = get_attn_subsequence_mask(tgt_i).to(device)  # [batch_size, 1]
+        dec_self_attn_mask = torch.gt((dec_self_attn_pad_mask + dec_self_attn_subsequent_mask),
+                                      0).to(device)  # [batch_size, tgt_len, tgt_len]
+        dec_enc_attn_mask = get_attn_pad_mask(tgt_i, srcs).to(device)
+        # building decoder inputing
+        dec_input_web = model.embedding_matrix(tgt_i)
+        dec_input_peb = model.pos_emb(tgt_pos_i)
+        dec_input = dec_input_web + dec_input_peb
+        # decoder
+        dec_output, dec_self_attns, dec_enc_attns = model.decoder(dec_input, enc_output, 
+                                                                  dec_self_attn_pad_mask, dec_enc_attn_mask)
+        logits = model.projection(dec_output)
+        pred_i = logits[:,-1,:] #torch.argmax(logits[:,-1,:], dim=-1)
         preds[:,i,:] = pred_i
         tgt_i = torch.cat([tgt_i, torch.argmax(pred_i, dim=-1).unsqueeze(1)], 1)
+        flag_i = torch.argmax(pred_i, dim=-1).data.eq(3)
+        Stop_Flag = torch.logical_or(Stop_Flag, flag_i)
+        if (Stop_Flag==True).sum() == srcs.size()[0]:
+            print('equal break')
+            break
+        tgt_pos_i = tgt_pos[:, 0:i+2]
     #print(tgt_i)
 
     return preds
