@@ -13,6 +13,8 @@ from tqdm import tqdm
 from math import inf
 import argparse
 
+# from sacrebleu.metrics import BLEU
+
 
 def _response_tokenize(response):
     """
@@ -227,11 +229,68 @@ class NormalMetrics():
                 weights[n_gram],
                 smoothing_function=SmoothingFunction().method7)
             total_score.append(score)
+            # print(true_response)
+            # print(gen_response)
+            # print(score)
 
         if len(total_score) == 0:
             return 0
         else:
             return sum(total_score) / len(total_score)
+
+
+    # def get_sacrebleu(self, max_n_gram):
+    #     '''
+    #         _TOKENIZERS = {
+    #             'none': 'tokenizer_base.BaseTokenizer',
+    #             'zh': 'tokenizer_zh.TokenizerZh',
+    #             '13a': 'tokenizer_13a.Tokenizer13a',
+    #             'intl': 'tokenizer_intl.TokenizerV14International',
+    #             'char': 'tokenizer_char.TokenizerChar',
+    #             'ja-mecab': 'tokenizer_ja_mecab.TokenizerJaMecab',
+    #             'spm': 'tokenizer_spm.TokenizerSPM',
+    #         }
+    #         SMOOTH_DEFAULTS: Dict[str, Optional[float]] = {
+    #             # The defaults for `floor` and `add-k` are obtained from the following paper
+    #             # A Systematic Comparison of Smoothing Techniques for Sentence-Level BLEU
+    #             # Boxing Chen and Colin Cherry
+    #             # http://aclweb.org/anthology/W14-3346
+    #             'none': None,   # No value is required
+    #             'floor': 0.1,
+    #             'add-k': 1,
+    #             'exp': None,    # No value is required
+    #         }
+    #         :param lowercase: If True, lowercased BLEU is computed.
+    #         :param force: Ignore data that looks already tokenized.
+    #         :param tokenize: The tokenizer to use. If None, defaults to language-specific tokenizers with '13a' as the fallback default.
+    #         :param smooth_method: The smoothing method to use ('floor', 'add-k', 'exp' or 'none').
+    #         :param smooth_value: The smoothing value for `floor` and `add-k` methods. `None` falls back to default value.
+    #         :param max_ngram_order: If given, it overrides the maximum n-gram order (default: 4) when computing precisions.
+    #         :param effective_order: If `True`, stop including n-gram orders for which precision is 0. This should be
+    #             `True`, if sentence-level BLEU will be computed.
+    #         :param trg_lang: An optional language code to raise potential tokenizer warnings.
+    #         :param references: A sequence of reference documents with document being
+    #         defined as a sequence of reference strings. If given, the reference n-grams
+    #         and lengths will be pre-computed and cached for faster BLEU computation
+    #         across many systems.
+    #     '''
+    #     bleu = BLEU(lowercase=True,
+    #                 force=False,
+    #                 tokenize='13a',
+    #                 smooth_method='exp',
+    #                 smooth_value=None,
+    #                 max_ngram_order=max_n_gram,
+    #                 effective_order=False,
+    #                 trg_lang='')
+    #     # bleu.corpus_score(hys, refs)
+    #     # hys = [str1, str2, ..., strn]
+    #     # refs = [[ref1, ref2, ..., refn],
+    #     #         [ref1', ref2', ..., refn'],...,]
+    #     bleu_result = bleu.corpus_score(self.gen_responses, [self.true_responses])
+    #     print(bleu_result)
+    #     print(bleu.get_signature())
+    #     return bleu_result
+
 
     def get_greedy_matching(self):
         """
@@ -565,6 +624,10 @@ def getMetricsMsg(file_path, vocab, word2vec, model_path):
     bleu_3 = metrics.get_bleu(3)
     bleu_4 = metrics.get_bleu(4)
     print('Bleu-1,2,3,4 : {:0>.4f},{:0>.4f},{:0>.4f},{:0>.4f}'.format(bleu_1, bleu_2, bleu_3, bleu_4))
+    # sbleu_1 = metrics.get_sacrebleu(1)
+    # sbleu_2 = metrics.get_sacrebleu(2)
+    # sbleu_3 = metrics.get_sacrebleu(3)
+    # sbleu_4 = metrics.get_sacrebleu(4)
 
     greedy_matching = metrics.get_greedy_matching()
     embedding_average = metrics.get_embedding_average()
